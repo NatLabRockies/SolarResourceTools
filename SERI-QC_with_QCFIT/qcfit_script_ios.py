@@ -34,14 +34,19 @@ from matplotlib.widgets import RectangleSelector
 
 def getFilePath():
     global data
-    if len(data["defaultDataFolder"])>0:
-        initPath = data["defaultDataFolder"]
-    else:
-        initPath="/"
     root = tk.Tk()
     root.withdraw()
-    root.update()
-    path = tkinter.filedialog.askopenfilename(parent=root, initialdir=initPath, title='Upload csv file',
+
+    # Make sure the root window is centered
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    dialog_width = 600
+    dialog_height = 400
+    center_x = int((screen_width - dialog_width) / 2)
+    center_y = int((screen_height - dialog_height) / 2)
+    root.geometry(f"{dialog_width}x{dialog_height}+{center_x}+{center_y}")
+
+    path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload csv file',
                                               filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
     return path
 
@@ -49,8 +54,17 @@ def getFilePath():
 def getQC0FilePath():
     root = tk.Tk()
     root.withdraw()
-    root.update()
-    path = tkinter.filedialog.askopenfilename(parent=root, initialdir="/", title='Upload QC0 file',
+
+    # Make sure the root window is centered
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    dialog_width = 600
+    dialog_height = 400
+    center_x = int((screen_width - dialog_width) / 2)
+    center_y = int((screen_height - dialog_height) / 2)
+    root.geometry(f"{dialog_width}x{dialog_height}+{center_x}+{center_y}")
+
+    path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload QC0 file',
                                               filetypes=(("QC0 files", "*.QC0"), ("all files", "*.*")))
     return path
 
