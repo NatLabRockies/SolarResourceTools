@@ -392,9 +392,7 @@ def hitOpen():
         ip["monthName"] = (pd.to_datetime(ip[ip.columns[0]])).dt.month_name()
         ip["year"] = (pd.to_datetime(ip[ip.columns[0]])).dt.year
 
-        monList = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-                   "November",
-                   "December"]
+        monList = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
         months = set(ip["monthName"])
         toRemove = list(set(monList) - months)
 
@@ -534,7 +532,7 @@ def hitOpen():
     siteOption = tk.OptionMenu(mainFrame, optVar, *siteOptList, )
     siteOption.place(relx=0.15, rely=0.2, relwidth=0.35, relheight=0.1)
     data["siteIdentifier"] = optVar.get()
-    optVar.trace("w", callback=updateSiteInfo)
+    optVar.trace_add("write", callback=updateSiteInfo)
 
     newSiteButton = tk.Button(mainFrame, text="New Site", command=newSite)
     newSiteButton.place(relx=0.54, rely=0.2, relwidth=0.20, relheight=0.1)
@@ -3784,7 +3782,7 @@ r2.place(relx=0.6, rely=0.34, relwidth=0.4, relheight=0.3)
 r3 = tk.Radiobutton(planeCanvas, text="Kn-Kd", font=(None, 9), variable=planeVar, value=3)
 r3.place(relx=0.6, rely=0.67, relwidth=0.4, relheight=0.3)
 r1.select()
-planeVar.trace("w", callback=plotUpdateThroughkspace)
+planeVar.trace_add("write", callback=plotUpdateThroughkspace)
 animateButton = tk.Button(planeCanvas, text="Animate", font=(None, 10), command=animatePlots)
 animateButton.place(relx=0.04, rely=0.52, relwidth=0.5, relheight=0.38)
 disable(planeCanvas.winfo_children())
@@ -3809,11 +3807,11 @@ yearLabel.place(relx=0.05, rely=0.6, relwidth=0.25, relheight=0.2)
 
 monOption = tk.OptionMenu(monYearCanvas, monVar, *monList)
 monOption.place(relx=0.35, rely=0.03, relwidth=0.6, relheight=0.45)
-monVar.trace("w", callback=plotUpdateThroughMonth)
+monVar.trace_add("write", callback=plotUpdateThroughMonth)
 
 yearOption = tk.OptionMenu(monYearCanvas, yearVar, *yearList)
 yearOption.place(relx=0.35, rely=0.51, relwidth=0.6, relheight=0.45)
-yearVar.trace('w', callback=plotByYear)
+yearVar.trace_add('write', callback=plotByYear)
 
 disable(monYearCanvas.winfo_children())
 
@@ -3874,14 +3872,14 @@ equalRange = tk.Radiobutton(densityCanvas, text="Equal Range", font=(None, 9), v
 equalRange.place(relx=0.4, rely=0.34, relwidth=0.4, relheight=0.3)
 expFactor = tk.Radiobutton(densityCanvas, text="Exp(Factor):", font=(None, 9), variable=densVar,
                            value=4)  # , command=plot)
-densVar.trace('w', callback=density)
+densVar.trace_add('write', callback=density)
 expFactor.place(relx=0.4, rely=0.67, relwidth=0.4, relheight=0.3)
 expVar = tk.StringVar(mainRoot, value='3.0')
 expEntry = tk.Entry(densityCanvas, textvariable=expVar, state=tk.DISABLED)
 expEntry.place(relx=0.82, rely=0.67, relwidth=0.16, relheight=0.3)
 expEntry.configure(state=tk.DISABLED)
 
-expVar.trace('w', callback=density)
+expVar.trace_add('write', callback=density)
 
 disable(densityCanvas.winfo_children())
 ####################################################

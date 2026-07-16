@@ -26,15 +26,11 @@ def getArea(shape):
         print("Shape should be <left> or <right>")
         return
 
-    table = pd.DataFrame({"y": y})
-    table.y = y
+    cols = {"y": y}
     for i in range(1, end):
-        multiplier = 0
-
         for j in range(1, 21):
             val = []
             toAdd = 0
-
             shift = (j - 1) * 2.5
             for k in y:
                 if curve[i - 1][(k - 1)] < 0:
@@ -42,11 +38,10 @@ def getArea(shape):
                     val.append(toAdd)
                 else:
                     toAdd += min(curve[i - 1][(k - 1)] + shift, 100)
-
                     val.append(toAdd)
+            cols[str(i) + "-" + str(j)] = val
 
-            table[str(i) + "-" + str(j)] = val
-
+    table = pd.DataFrame(cols)
     return table
 tl = getArea("left")
 tr = getArea("right")
