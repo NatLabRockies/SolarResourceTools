@@ -27,6 +27,13 @@ from matplotlib.figure import Figure
 from matplotlib import style
 from PIL import Image, ImageTk, ImageGrab  # package name is PILLOW
 import curveArea as cAr
+import qcfit_core.boundary_helpers as boundary_helpers
+import qcfit_core.boundary_pipeline as boundary_pipeline_core
+import qcfit_core.kspace as kspace_core
+import qcfit_core.mapping_helpers as mapping_helpers
+import qcfit_core.pipeline as pipeline_core
+import qcfit_core.graph_helpers as graph_helpers
+import qcfit_core.state_models as state_models
 from functools import partial
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RectangleSelector
@@ -70,62 +77,7 @@ def getQC0FilePath():
 
 
 def getKspace(ip):
-    miss = 9900.0
-    ip['XT'] = -999.0
-    ip['XN'] = -999.0
-    ip['XD'] = -999.0
-    ip['KT'] = -999.0
-    ip['KN'] = -999.0
-    ip['KT1'] = -999.0
-    ip['KN1'] = -999.0
-    ip['KD'] = -999.0
-
-    ip['goAhead'] = 1.0
-    ip.loc[(ip['ETR'] == 0.0), 'goAhead'] = 0.0
-    Global = ip[ip.columns[2]]
-    Direct = ip[ip.columns[3]]
-    Diffuse = ip[ip.columns[4]]
-
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss), 'XD'] = Diffuse / ip['ETR']
-
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Direct < miss), 'XN'] = Direct / ip['ETRN']
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Direct < miss), 'KT1'] = ip['XN'] + ip['XD']
-
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Direct >= miss), 'KN'] = miss
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Direct >= miss), 'KT1'] = miss
-
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Global < miss), 'XT'] = Global / ip['ETR']
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Global < miss), 'KN1'] = ip['XT'] - ip['XD']
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Global >= miss), 'XT'] = miss
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Global >= miss), 'KN1'] = miss
-
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss), 'XD'] = miss
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss), 'KT1'] = miss
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss), 'KN1'] = miss
-
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Direct < miss), 'XN'] = Direct / ip['ETRN']
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Direct >= miss), 'XN'] = miss
-
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Global < miss), 'XT'] = Global / ip['ETR']
-    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Global >= miss), 'XT'] = miss
-
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < miss), 'KT'] = (ip['XT'] * 100)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < miss), 'KD'] = (ip['XD'] * 100)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < miss), 'KN'] = (ip['XN'] * 100)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1'] * 100)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1'] * 100)
-
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < -10000.0), 'KT'] = -10000.0
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < -10000.0), 'KD'] = -10000.0
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < -10000.0), 'KN'] = -10000.0
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < -10000.0), 'KT1'] = -10000.0
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < -10000.0), 'KN1'] = -10000.0
-
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < miss), 'KT'] = (ip['KT']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < miss), 'KD'] = (ip['KD']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < miss), 'KN'] = (ip['KN']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1']).map(int)
+    kspace_core.compute_kspace(ip)
 
 
 def hitOpen():
@@ -861,531 +813,73 @@ def plotUpdateThroughMonth(*args):
 
 def curvefitting():
     global ip, plotData, pdLow, pdMed, pdHigh, monVar, data
-    data["plane"] = planeVar.get()
-    data["month"] = monVar.get()
-    data["year"] = yearVar.get()
-
-    # calculate active flag for 3 spaces
-    ip["activeKtKn"] = 0
-    ip["activeKtKd"] = 0
-    ip["activeKnKd"] = 0
-
-    ip.loc[(ip["KT"] > ip["KN"]), "activeKtKn"] = 1
-    ip.loc[(ip["KT"] > ip["KN1"]), "activeKtKd"] = 1
-    ip.loc[(ip["KT1"] > ip["KN"]), "activeKnKd"] = 1
-
-    # ignore negative and values more than 100
-    ip.loc[(ip["KT"] > 100), "activeKtKn"] = 0
-    ip.loc[(ip["KT"] > 100), "activeKtKd"] = 0
-    ip.loc[(ip["KT"] > 100), "activeKnKd"] = 0
-    ip.loc[(ip["KN"] > 100), "activeKtKn"] = 0
-    ip.loc[(ip["KN"] > 100), "activeKtKd"] = 0
-    ip.loc[(ip["KN"] > 100), "activeKnKd"] = 0
-    ip.loc[(ip["KT"] < 0), "activeKtKn"] = 0
-    ip.loc[(ip["KT"] < 0), "activeKtKd"] = 0
-    ip.loc[(ip["KT"] < 0), "activeKnKd"] = 0
-    ip.loc[(ip["KN"] < 0), "activeKtKn"] = 0
-    ip.loc[(ip["KN"] < 0), "activeKtKd"] = 0
-    ip.loc[(ip["KN"] < 0), "activeKnKd"] = 0
-
-    # calculate error Kt-Kn-Kd
-    ip["residual"] = 0
-    ip["bin"] = ""
-    ip["residual"] = ip["XT"] - ip["XN"] - ip["XD"]
-
-    plotData = ip[ip["monthName"] == monVar.get()].copy()
-
-    # seperate data based on airmasses
-
-    pdLow = plotData[plotData["NAM"] == 1].copy()
-    pdMed = plotData[plotData["NAM"] == 2].copy()
-    pdHigh = plotData[plotData["NAM"] == 3].copy()
-
-    # identify axes based on kspaces
-    if data["plane"] == 1:
-        flag = "activeKtKn"
-        xAxis = data["xAxis"] = "KT"
-        yAxis = data["yAxis"] = "KN"
-    elif data["plane"] == 2:
-        flag = "activeKtKd"
-        xAxis = data["xAxis"] = "KT"
-        yAxis = data["yAxis"] = "KN1"
-    elif data["plane"] == 3:
-        flag = "activeKnKd"
-        xAxis = data["xAxis"] = "KT1"
-        yAxis = data["yAxis"] = "KN"
-
-    # by default 3-comp filtering with threshold
-    for df in (pdLow, pdMed, pdHigh):
-        df.loc[(df["residual"] > data["threshold"]), flag] = 0
-
-    # calculate max values of K space - first read from QC0 if not present then find out
-
-    knMax = boundary[boundary["month"] == data["month"][:3].upper()]
-    knMax = int(list(knMax["MC_KN"])[0])
-    ktMax = boundary[boundary["month"] == data["month"][:3].upper()]
-    ktMax = int(list(ktMax["MC_KT_" + str(data["integration"])])[0])
-
-    # global airmass throttles for kt and kn maximus
-    am_thrott_kt = [0, 3, 10]
-    am_thrott_kn = [0, 5, 15]
-    amass = ["low", "med", "high"]
-    for n, am in enumerate(amass):
-        data[am + "AM"]["knMax"] = knMax - am_thrott_kn[n]
-        data[am + "AM"]["ktMax"] = ktMax - am_thrott_kt[n]
-
-    for i, df, amass in zip([0, 1, 2], [pdLow, pdMed, pdHigh], amass):
-        # reduce maximus according to the airmass
-        knMax = data[amass + "AM"]["knMax"]
-        ktMax = data[amass + "AM"]["ktMax"]
-        knMax = int(knMax)  # - int(am_thrott_kn[i])
-        ktMax = int(ktMax)  # - int(am_thrott_kt[i])
-
-        if (knMax < 1) or (ktMax < 1):
-            for k in (["KT", "KN"]):
-                df = df[df[flag] == 1]
-                tempList = list(set(df[k]))
-
-                if len(tempList) > 0:
-                    tempList = [i for i in tempList if 0 < i < 100]
-                    maxVal = int(max(tempList))
-                else:
-                    maxVal = "NA"
-                if k == "KT":
-                    ktMax = maxVal
-                elif k == "KN":
-                    knMax = maxVal
-
-            # now update the data dictionary
-            data[amass + "AM"]["ktMax"] = ktMax
-            data[amass + "AM"]["knMax"] = knMax
-            # data[amass + "AM"]["kdMax"] = kdMax
-
-            # now update the data dictionary
-            data[amass + "AM"]["ktMax"] = ktMax
-            data[amass + "AM"]["knMax"] = knMax
+    state = state_models.from_legacy_dict(data)
+    plotData, pdLow, pdMed, pdHigh = pipeline_core.compute_curvefitting(
+        ip,
+        boundary,
+        state,
+        monVar.get(),
+        yearVar.get(),
+        planeVar.get(),
+    )
+    state_models.apply_to_legacy_dict(state, data)
 
 
 def getBoundaries():
     global data, pdLow, pdMed, pdHigh, pcL, dcL, pcR, dcR
-    # get area table for left and right curves
-    areaLeft = cAr.getArea("left")
-    areaRight = cAr.getArea("right")
-    airmasses = ["low", "med", "high"]
-    dataFrames = [pdLow, pdMed, pdHigh]
-    location = [lowCanvas, medCanvas, highCanvas]
+    state = state_models.from_legacy_dict(data)
 
-    for amass, dframe, location in zip(airmasses, dataFrames, location):
-        # identifying column names in Boundary dataframe
-        if amass == "low":
-            boundShapeL = "LA_Left_S"
-            boundPosL = "LA_Left_P"
-            boundShapeR = "LA_Right_S"
-            boundPosR = "LA_Right_"
-            dim = 0
-        elif amass == "med":
-            boundShapeL = "MA_Left_S"
-            boundPosL = "MA_Left_P"
-            boundShapeR = "MA_Right_S"
-            boundPosR = "MA_Right_"
-            dim = 1
-        elif amass == "high":
-            boundShapeL = "HA_Left_S"
-            boundPosL = "HA_Left_P"
-            boundShapeR = "HA_Right_S"
-            boundPosR = "HA_Right_"
-            dim = 2
+    plot_instructions = boundary_pipeline_core.compute_boundaries(
+        state,
+        pdLow,
+        pdMed,
+        pdHigh,
+        boundary,
+        pcL,
+        dcL,
+        pcR,
+        dcR,
+    )
+    state_models.apply_to_legacy_dict(state, data)
 
-        shapeL = boundary[boundary["month"] == data["month"][:3].upper()]
-        shapeL = list(shapeL[boundShapeL])[0]
-        posL = boundary[boundary["month"] == data["month"][:3].upper()]
-        posL = list(posL[boundPosL])[0]
-        shapeR = boundary[boundary["month"] == data["month"][:3].upper()]
-        shapeR = list(shapeR[boundShapeR])[0]
-        posR = boundary[boundary["month"] == data["month"][:3].upper()]
-        posR = list(posR[boundPosR + str(data["integration"])])[0]
+    location_map = {
+        "low": lowCanvas,
+        "med": medCanvas,
+        "high": highCanvas,
+    }
 
-        # updating the data dictionary
-
-        shapeL = data[amass + "AM"]["shapeLeft"] = int(shapeL)
-        positionL = data[amass + "AM"]["posLeft"] = int(posL)
-        shapeR = data[amass + "AM"]["shapeRight"] = int(shapeR)
-        positionR = data[amass + "AM"]["posRight"] = int(posR)
-
-        # identify flag and axes based on kspaces
-        if data["plane"] == 1:
-            flag = "activeKtKn"
-            xAxis = data["xAxis"] = "KT"
-            yAxis = data["yAxis"] = "KN"
-        elif data["plane"] == 2:
-            flag = "activeKtKd"
-            xAxis = data["xAxis"] = "KT"
-            yAxis = data["yAxis"] = "KN1"
-        elif data["plane"] == 3:
-            flag = "activeKnKd"
-            xAxis = data["xAxis"] = "KT1"
-            yAxis = data["yAxis"] = "KN"
-
-        # giving shortcuts
-        ktMax = data[amass + "AM"]["ktMax"]
-        knMax = data[amass + "AM"]["knMax"]
-
-        # get/calculate  boundaries if ktMax or knMax are not NA. (i,e. data frame is not empty)
-
-        if (len(dframe[dframe[flag] == 1]) > 0):
-
-            # Let's find left boundary of active points
-            actFrame = dframe[dframe[flag] == 1]
-            activeLBound = []
-            eCount = 1
-            for y in range(0, int(knMax) + 1):
-                x = list(actFrame[actFrame["KN"] == y]["KT"])
-                if len(x) > 0:
-                    activeLBound.append(min(x))
-                else:
-                    if y == 0:
-                        activeLBound.append(0)
-                    else:
-                        activeLBound.append("fill")
-                        eCount += 1
-            indices = [i for i, v in enumerate(activeLBound) if v == "fill"]
-            # Now filling empty values with average
-            for i in indices:
-                nexti = 0
-                prev = 0
-                prev = activeLBound[i - 1]
-                for j in range(i + 1, int(knMax) + 1):
-                    if activeLBound[j] != "fill":
-                        nexti = activeLBound[j]
-                        break
-                activeLBound[i] = (int(prev) + int(nexti)) / 2
-
-            # Now find right boundary of active points
-            activeRBound = []
-            eCount = 1
-            for y in range(0, int(knMax) + 1):
-                x = list(actFrame[actFrame["KN"] == y]["KT"])
-                if len(x) > 0:
-                    if max(x) <= ktMax:
-                        activeRBound.append(max(x))
-                    else:
-                        while max(x) > ktMax:
-                            x.remove(max(x))
-                            if len(x) == 0:
-                                activeRBound.append(ktMax)
-                                break
-                        if len(x) > 0:
-                            activeRBound.append(max(x))
-                else:
-                    if y == 0:
-                        activeRBound.append(0)
-                    else:
-                        activeRBound.append("fill")  # +str(eCount))
-                        eCount += 1
-            indices = [i for i, v in enumerate(activeRBound) if v == "fill"]
-            # Now filling empty values with average
-            activeRBound[-1] = ktMax
-
-            for i in indices:
-                nexti = 0
-                prev = 0
-                prev = activeRBound[i - 1]
-                for j in range(i + 1, int(knMax) + 1):
-                    if activeRBound[j] != "fill":
-                        nexti = activeRBound[j]
-                        break
-                activeRBound[i] = (int(prev) + int(nexti)) / 2
-                if activeRBound[i] > ktMax:
-                    activeRBound[i] = ktMax
-
-            # updating dictionary
-            data[amass + "AM"]["activeLBound"] = activeLBound
-            data[amass + "AM"]["activeRBound"] = activeRBound
-
-            if (shapeL == 0):  # Assumption is we have both the boundaries (left and right) or none
-                # count active points on the left of curve.
-                df = dframe[dframe[flag] == 1]
-
-                # setting default scores to 1000 as we want the lowest possible
-                scoreL = 1000
-                scoreR = 1000
-
-                for curve in range(0, 6):
-                    for position in range(1, 21):
-                        shift = ((position - 1) * 2.5)
-                        dataCountL = 0
-                        dataCountR = 0
-                        # Find the curve with shift and set negative values as 0
-                        pointsL = ut.curveLeft[curve]
-                        pointsL = [(point) + shift for point in pointsL]
-                        zeroesL = [0 for point in pointsL if point < 0]
-                        pointsL = zeroesL + pointsL[len(zeroesL):]
-
-                        # Find the right curve with shift
-                        if curve < 5:
-                            pointsR = ut.curveRight[curve]
-                            pointsR = [(point) + shift for point in pointsR]
-
-                        for y in range(0, int(knMax) + 1):
-                            activeCountL = list(df[df["KN"] == y]["KT"])
-                            activeCountL = len([x for x in activeCountL if x < (pointsL[y])])
-                            """# for debugging purpose
-                            if curve == 3:
-                                if position == 5:
-                                    print("for curve:4-5 at y = ", y,"point on curve is ", (ut.curveLeft[curve][y])+shift, " left out = ", activeCountL, " and points are ",
-                                          [x for x in (list(df[df["KN"] == y]["KT"])) if x < ((ut.curveLeft[curve][y]) + shift)])
-
-                            # delete till here"""
-                            dataCountL = dataCountL + activeCountL
-
-                            """if curve == 1:
-                                if position == 14:
-                                    print("")"""
-                            if curve < 5:
-                                activeCountR = list(df[df["KN"] == y]["KT"])
-                                activeCountR = len([x for x in activeCountR if x > (pointsR[y])])
-                                """# for debugging purpose
-
-                                if curve == 1:
-                                    if position == 14:
-                                        print("for curve:2-14 at y = ", y,"point on curve is ", (ut.curveRight[curve][y])+shift, " right out = ", activeCountL, " and points are ",
-                                              [x for x in (list(df[df["KN"] == y]["KT"])) if x > ((ut.curveRight[curve][y]) + shift)])
-
-                                # delete till here"""
-                                dataCountR = dataCountR + activeCountR
-
-                        pixCountL = np.sum(abs(np.array(pointsL[:knMax + 1]) - np.array(activeLBound)))
-                        pcL[dim, curve, position - 1] = pixCountL
-                        pixCountL = pixCountL / (areaLeft.iloc[int(knMax) - 1][(curve * 20) + position])
-
-                        dcL[dim, curve, position - 1] = dataCountL
-                        lcount = dataCountL
-                        dataCountL = dataCountL / len(df)
-                        scoreNowL = pixCountL + dataCountL
-
-                        if curve < 5:
-                            pixCountR = np.sum(abs(np.array(pointsR[:knMax + 1]) - np.array(activeRBound)))
-                            pcR[dim, curve, position - 1] = pixCountR
-                            pixCountR = pixCountR / (areaRight.iloc[int(knMax) - 1][(curve * 20) + position])
-                            dcR[dim, curve, position - 1] = dataCountR
-                            rcount = dataCountR
-                            dataCountR = dataCountR / len(df)
-                            scoreNowR = pixCountR + dataCountR
-
-                        # print("curve : ", curve, " position : ", position, " score left ",scoreNowL, "score right ", scoreNowR, " out left ", lcount, " out right ", rcount )
-
-                        if scoreNowL < scoreL:
-                            scoreL = scoreNowL
-                            shapeL = curve + 1
-                            positionL = position
-                            outL = lcount
-                        if curve < 5:
-                            if scoreNowR < scoreR:
-                                scoreR = scoreNowR
-                                shapeR = curve + 1
-                                positionR = position
-                                outR = rcount
-
-                        # print("curve : ", shapeL, " position : ", positionL, " out left ", outL, "listL",
-                        # list(df[df["KN"] == y]["KT"]), "curvePoint", (ut.curveLeft[shapeL][y] + shiftL),
-                        #  " out right ", outR)
-
-                """if (shapeR == 0): #if activating then align 4 spaces to the left
-                            # count active points on the right of curve.
-                            df = dframe[dframe[flag] == 1]
-
-                            posCountlistRight = []  # a list to store active data points for all 120 curves.
-                            scoreR = 1000
-                            for curve in range(0, 5):
-                                for position in range(1, 21):
-                                    dataCountR = 0
-                                    for y in range(0, int(knMax)):
-                                        activeCountR = list(df[df["KN"] == y]["KT"])
-                                        activeCountR = len([x for x in activeCountR if x > ut.curveRight[curve][y]])
-                                        #activeCount = len([x for x in activeCount if x <= int(ktMax)])
-
-                                        dataCountR = dataCountR + activeCountR
-                                    posCountlistRight.append(dataCountR)
-                                    scoreNowR = dataCountR / (areaRight.iloc[int(knMax) - 1][(curve * 20) + position])
-                                    print("curve : ", curve, " at position : ", position, " has a score for right ", y, " is : ",
-                                          scoreNowR)
-                                    if scoreNowR < scoreR:
-                                        scoreR = scoreNowR
-                                        bestShapeR = curve + 1
-                                        bestposR = position
-                                        outR = dataCountR
-
-                            shapeR = data[amass + "AM"]["shapeRight"] = bestShapeR
-
-
-                            positionR = data[amass + "AM"]["posRight"] = bestposR"""
-            else:
-                # Calculating shifts
-                shiftL = ((positionL - 1) * 2.5)
-                shiftR = ((positionR - 1) * 2.5)
-                outL = 0
-                outR = 0
-
-                # Find the left curve with shift and set negative values as 0
-                pointsL = ut.curveLeft[shapeL - 1]
-                pointsL = [point + shiftL for point in pointsL]
-                zeroesL = [0 for point in pointsL if point < 0]
-                pointsL = zeroesL + pointsL[len(zeroesL):]
-
-                # Find the right curve with shift
-                pointsR = ut.curveRight[shapeR - 1]
-                pointsR = [point + shiftR for point in pointsR]
-
-                for y in range(0, int(knMax) + 1):
-                    df = dframe[dframe[flag] == 1]
-
-                    activeCountL = list(df[df["KN"] == y]["KT"])
-                    activeCountL = len([x for x in activeCountL if x < (pointsL[y])])
-                    outL = outL + activeCountL
-
-                    activeCountR = list(df[df["KN"] == y]["KT"])
-                    activeCountR = len([x for x in activeCountR if x > (pointsR[y])])
-                    # activeCountR = len([x for x in activeCountR if x <= int(ktMax)])
-                    outR = outR + activeCountR
-                    # print("curve : ", shapeL, " position : ", positionL," out left ", outL,"listL",list(df[df["KN"] == y]["KT"]), "curvePoint",(ut.curveLeft[shapeL][y]+shiftL), " out right ", outR)
-
-            data[amass + "AM"]["shapeLeft"] = shapeL
-            data[amass + "AM"]["posLeft"] = positionL
-            data[amass + "AM"]["shapeRight"] = shapeR
-            data[amass + "AM"]["posRight"] = positionR
-
-            leftB = list(ut.curveLeft[shapeL - 1])
-            leftB = leftB[0:int(knMax)]  # get all the points of curve upto Ymax
-            leftB = [(i + (2.5 * positionL)) for i in leftB]
-
-            if leftB[-1] != int(ktMax):
-                leftB.append(int(ktMax))
-            # leftB.append(ktMax)
-
-            # copy first value at 0th index
-            leftB = [leftB[0], *leftB]
-
-            # set 0 for negative values
-            for n, i in enumerate(leftB):
-                if int(i) < 0:
-                    leftB[n] = 0
-
-            rightB = list(ut.curveRight[shapeR - 1])
-            rightB = rightB[0:int(knMax)]  # get all the points of curve upto Ymax
-            rightB = [(i + (2.5 * positionR)) for i in rightB]
-            rightB = [i for i in rightB if i <= int(ktMax)]
-            if rightB[-1] != int(ktMax):
-                rightB.append(int(ktMax))
-            # rightB.append(int(ktMax))
-
-            # copy first value at 0th index
-            rightB = [rightB[0], *rightB]
-
-            # set 0 for negative values
-            for n, i in enumerate(rightB):
-                if int(i) < 0:
-                    rightB[n] = 0
-
-            # count if points are above configured kn max
-            upCount = dframe[dframe[flag] == 1]
-            upCount = upCount[upCount["KN"] > int(knMax)]
-            outUp = upCount.__len__()
-            data[amass + "AM"]["lBound"] = leftB
-            data[amass + "AM"]["rBound"] = rightB
-            data[amass + "AM"]["In"] = len(dframe[dframe[flag] == 1]) - (outL + outR + outUp)
-            # data[amass + "AM"]["Out"] = outL + outR + outUp
-            data[amass + "AM"]["Active"] = len(dframe[dframe[flag] == 1])
-            if data[amass + "AM"]["Active"] > 1:
-                data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
-                    ((outL + outR + outUp) / data[amass + "AM"]["Active"]) * 100, 2)) + " %)"
-            else:
-                data[amass + "AM"]["Out"] = outL + outR + outUp
-            data[amass + "AM"]["Ignored"] = len(dframe[dframe[flag] == 0])
-            data[amass + "AM"]["Total"] = len(dframe)
-            data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
-            data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
-
-            ####################
-            # now work on plot
-            ####################
-            plotGraph(dframe, amass, location, xAxis, yAxis, flag)
+    for item in plot_instructions:
+        location = location_map[item["amass"]]
+        if item["has_active"]:
+            plotGraph(item["dframe"], item["amass"], location, item["xAxis"], item["yAxis"], item["flag"])
         else:
-            outL = 0
-            outR = 0
-            matplotlib.use("TKAgg")
-            style.use("ggplot")
-            f = Figure(figsize=(3, 2.5), dpi=100)
-            a = f.add_subplot(111)
-            a.clear()
-            line = np.linspace(0, 100, 101)
-            a.set_xlim([0, 100])
-            a.set_ylim([0, 100])
-            a.plot(line, line, color="black")
-            canvas = FigureCanvasTkAgg(f, master=location)
-            canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
-            canvas.draw()
+            _plot_empty_graph(location)
 
-            """if location == lowCanvas:
-                lowButton = tk.Button(location, text="Configure", font=(None, 10), command=lowConfig,
-                                      state=tk.DISABLED)
-                lowButton.place(relx=.75, rely=0.015, relwidth=0.22, relheight=0.1)
-            elif location == medCanvas:
-                medButton = tk.Button(location, text="Configure", font=(None, 10), command=medConfig,
-                                      state=tk.DISABLED)
-                medButton.place(relx=.75, rely=0.015, relwidth=0.22, relheight=0.1)
-            elif location == highCanvas:
-                highButton = tk.Button(location, text="Configure", font=(None, 10), command=highConfig,
-                                       state=tk.DISABLED)
-                highButton.place(relx=.75, rely=0.015, relwidth=0.22, relheight=0.1)"""
+
+def _plot_empty_graph(location):
+    matplotlib.use("TKAgg")
+    style.use("ggplot")
+    f = Figure(figsize=(3, 2.5), dpi=100)
+    a = f.add_subplot(111)
+    a.clear()
+    line = np.linspace(0, 100, 101)
+    a.set_xlim([0, 100])
+    a.set_ylim([0, 100])
+    a.plot(line, line, color="black")
+    canvas = FigureCanvasTkAgg(f, master=location)
+    canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
+    canvas.draw()
 
 
 def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
     if len(dframe) > 1:
+        state = state_models.from_legacy_dict(data)
+        am_state = state_models.get_airmass(state, amass)
         col = dframe.columns
 
         if len(dframe[dframe[flag] == 1]) > 0:  # Plot boundary only if data is there
-            # Plotting left boundary
-            xLB = data[amass + "AM"]["lBound"]
-            # Making x count = 101 so it doesn't mess with existing graph
-            fillCount = 101 - len(xLB)
-            if fillCount > 0:
-                fillList = [xLB[-1]] * fillCount
-                xLB = xLB + fillList
-            yLB = list(np.linspace(0, data[amass + "AM"]["knMax"], data[amass + "AM"]["knMax"] + 1))
-            fillCount = 101 - len(yLB)
-            fillList = [yLB[-1]] * fillCount
-            yLB = yLB + fillList
-
-            # plotting right boundary
-            xRB = data[amass + "AM"]["rBound"]
-            # Making x count = 101 so it doesn't mess with existing graph
-            fillCount = 101 - len(xRB)
-            if fillCount > 0:
-                fillList = [xRB[-1]] * fillCount
-                xRB = xRB + fillList
-
-            yRB = yLB
-            # yRB = [0,*yRB]
-            # yRB[-1] = yLB[-1]
-            # fillCount = 101 - len(yRB)
-            # fillList = [yRB[-1]] * fillCount
-            # yRB = yRB + fillList
-
-            # Now update data dictionary
-
-            # check if anypoint of left boundary is falling beyond right boundary if yes restrict at right boundary
-            """for (x), i in enumerate(xLB):
-                if int(x) > int(xRB[i]):
-                    xLB[i]=xRB[i]"""
-            xlimit = max(xRB)
-            xLB = [x if (x < xlimit) else xlimit for x in xLB]
-
-            # Now update data dictionary
-
-            data[amass + "AM"]["xLB"] = xLB
-            data[amass + "AM"]["yLB"] = yLB
-            data[amass + "AM"]["xRB"] = xRB
-            data[amass + "AM"]["yRB"] = yRB
+            xLB, yLB, xRB, yRB = boundary_helpers.prepare_plot_boundaries(state, amass)
+            state_models.apply_to_legacy_dict(state, data)
 
         dframe = dframe.copy()
         dframe["outFlag"] = 0
@@ -1487,22 +981,12 @@ def toggle_selector(event):
 def graphConfig(amass, dframe):
     global data, editGraph
     locationDict = {'low': lowCanvas, 'med': medCanvas, 'high': highCanvas}
+    state = state_models.from_legacy_dict(data)
 
-    if data["plane"] == 1:
-        flag = data["flag"] = "activeKtKn"
-        x = data["xAxis"] = "KT"
-        y = data["yAxis"] = "KN"
-        titleString = "Global, Direct"
-    elif data["plane"] == 2:
-        flag = data["flag"] = "activeKtKd"
-        x = data["xAxis"] = "KT"
-        y = data["yAxis"] = "KN1"
-        titleString = "Global, Diffuse"
-    elif data["plane"] == 3:
-        flag = data["flag"] = "activeKnKd"
-        x = data["xAxis"] = "KT1"
-        y = data["yAxis"] = "KN"
-        titleString = "Direct, Diffuse"
+    flag, x, y, titleString = graph_helpers.plane_display_fields(state.plane)
+    data["flag"] = flag
+    data["xAxis"] = x
+    data["yAxis"] = y
 
     def plotForEdit(amass, dframe, flag, x, y, titleString):
         global data, editGraph
@@ -1586,8 +1070,10 @@ def graphConfig(amass, dframe):
             ax.scatter(xActb51, yActb51, color='khaki', marker=".")
 
         ax.plot(line, line, color="black")  # line no 0
-        ax.plot(data[amass + "AM"]["xLB"], data[amass + "AM"]["yLB"], color="green")  # line no 1
-        ax.plot(data[amass + "AM"]["xRB"], data[amass + "AM"]["yRB"], color="green")  # line no 2
+        local_state = state_models.from_legacy_dict(data)
+        local_am_state = state_models.get_airmass(local_state, amass)
+        ax.plot(local_am_state.xLB, local_am_state.yLB, color="green")  # line no 1
+        ax.plot(local_am_state.xRB, local_am_state.yRB, color="green")  # line no 2
         toggle_selector.RS = RectangleSelector(ax, getCoordinates, drawtype='box', useblit=False, button=[1],
                                                minspanx=5, minspany=5, spancoords='pixels',
                                                interactive=True)
@@ -1607,7 +1093,8 @@ def graphConfig(amass, dframe):
         data["editWinFlag"] = 1
 
         ktMaxSpinVal = 99
-        minKt = data[amass + "AM"]["xLB"][int(data[amass + "AM"]["yLB"][-1])]
+        bounds = graph_helpers.airmass_bounds_for_edit(state, amass)
+        minKt = bounds["minKt"]
         knMaxSpinVal = 99
 
         if len(filterDict[amass]) > 0:
@@ -1620,13 +1107,14 @@ def graphConfig(amass, dframe):
         # actvate the controller page
         editGraph.deiconify()
         header = amass.upper() + " Air Mass - " + titleString
-        inPoints = data[amass + "AM"]["In"]
-        outPoints = data[amass + "AM"]["Out"]
-        activePoints = data[amass + "AM"]["Active"]
-        ignoredPoints = data[amass + "AM"]["Ignored"]
-        totalPoints = data[amass + "AM"]["Total"]
-        errL = data[amass + "AM"]["Err_L"]
-        errR = data[amass + "AM"]["Err_R"]
+        stats = graph_helpers.airmass_stats_snapshot(state, amass)
+        inPoints = stats["In"]
+        outPoints = stats["Out"]
+        activePoints = stats["Active"]
+        ignoredPoints = stats["Ignored"]
+        totalPoints = stats["Total"]
+        errL = stats["Err_L"]
+        errR = stats["Err_R"]
 
         def handleGraphCross():
             global data, editGraph
@@ -1637,9 +1125,6 @@ def graphConfig(amass, dframe):
         def reset(dframe, amass, x, y):
             global data
             plt.close('all')
-            outL = 0
-            outR = 0
-
             ktMax = int(data[amass + "AM"]["knMax"])
 
             plotForEdit(amass, dframe, flag, x, y, titleString)
@@ -1649,41 +1134,9 @@ def graphConfig(amass, dframe):
             # ax.plot(data[amass + "AM"]["xLB"], data[amass + "AM"]["yLB"], color="green")  # line no 1
             # ax.plot(data[amass + "AM"]["xRB"], data[amass + "AM"]["yRB"], color="green")  # line no 2
 
-            # update data dictionary
-            for yp in range(0, ktMax):
-                # activeCountL = list(df[df["KN"] == y][x])
-                # activeCountL = len([x for x in activeCountL if x < (ut.curveLeft[shapeL][y] + shiftL)])
-                # outL = outL + activeCountL
-
-                countL = list(dframe[dframe[y] == yp][x])
-                countL = [xp for xp in countL if xp < int(data[amass + "AM"]["xLB"][yp])]
-                outL = outL + len(countL)
-                countR = list(dframe[dframe[y] == yp][x])
-                countR = [xp for xp in countR if x > int(data[amass + "AM"]["xRB"][yp])]
-                outR = outR + len(countR)
-                # print("at y = ", y, "  ", "out left ", outL, "listL",
-                # list(filterData[filterData["KN"] == y][x]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
-                # outR)
-
-            # count if points are above configured kn max
-            upCount = dframe[dframe[flag] == 1]
-            upCount = upCount[upCount[y] > int(knVal.get())]
-            outUp = upCount.__len__()
-
-            # updating data dictionary
-            data[amass + "AM"]["In"] = len(dframe[dframe[flag] == 1]) - (outL + outR + outUp)
-            # data[amass + "AM"]["Out"] = outL + outR + outUp
-            data[amass + "AM"]["Active"] = len(dframe[dframe[flag] == 1])
-            if data[amass + "AM"]["Active"] > 1:
-                data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
-                    ((outL + outR + outUp) / data[amass + "AM"]["Active"]) * 100, 2)) + " %)"
-            else:
-                data[amass + "AM"]["Out"] = outL + outR + outUp
-            data[amass + "AM"]["Ignored"] = len(dframe[dframe[flag] == 0])
-            data[amass + "AM"]["Total"] = len(dframe)
-            if data[amass + "AM"]["Active"] > 1:
-                data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
-                data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
+            state = state_models.from_legacy_dict(data)
+            graph_helpers.recompute_airmass_stats(state, amass, dframe, flag, x, y, int(knVal.get()))
+            state_models.apply_to_legacy_dict(state, data)
             setStats()
 
             # update main canvas plot
@@ -1775,47 +1228,10 @@ def graphConfig(amass, dframe):
             # ax.scatter(xInact, yInact, color='orange')
             # plt.show
 
-            # calculating and updating stats
-            # left
-            outL = 0
-            outR = 0
-            ktMax = int(data[amass + "AM"]["ktMax"])
-            knMax = int(data[amass + "AM"]["knMax"])
             filterData = newFilter[newFilter[flag] == 1]
-            for yp in range(0, knMax):
-                # activeCountL = list(df[df["KN"] == y]["KT"])
-                # activeCountL = len([x for x in activeCountL if x < (ut.curveLeft[shapeL][y] + shiftL)])
-                # outL = outL + activeCountL
-
-                countL = list(filterData[filterData[y] == yp][x])
-                countL = [xp for xp in countL if xp < data[amass + "AM"]["xLB"][yp]]
-                outL = outL + len(countL)
-                countR = list(filterData[filterData[y] == yp][x])
-                countR = [xp for xp in countR if xp > data[amass + "AM"]["xRB"][yp]]
-                outR = outR + len(countR)
-                # print("at y = ", y, "  ", "out left ", outL, "listL",
-                # list(filterData[filterData["KN"] == y]["KT"]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
-                # outR)
-
-            # count if points are above configured kn max
-            upCount = newFilter[newFilter[flag] == 1]
-            upCount = upCount[upCount[y] > int(knVal.get())]
-            outUp = upCount.__len__()
-
-            # updating data dictionary
-            data[amass + "AM"]["In"] = len(newFilter[newFilter[flag] == 1]) - (outL + outR + outUp)
-            # data[amass + "AM"]["Out"] = outL + outR + outUp
-            data[amass + "AM"]["Active"] = len(newFilter[newFilter[flag] == 1])
-            if data[amass + "AM"]["Active"] > 1:
-                data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
-                    ((outL + outR + outUp) / data[amass + "AM"]["Active"]) * 100, 2)) + " %)"
-            else:
-                data[amass + "AM"]["Out"] = outL + outR + outUp
-            data[amass + "AM"]["Ignored"] = len(newFilter[newFilter[flag] == 0])
-            data[amass + "AM"]["Total"] = len(newFilter)
-            if data[amass + "AM"]["Active"] > 1:
-                data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
-                data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
+            state = state_models.from_legacy_dict(data)
+            graph_helpers.recompute_airmass_stats(state, amass, newFilter, flag, x, y, int(knVal.get()))
+            state_models.apply_to_legacy_dict(state, data)
 
             InVal.configure(text=data[amass + "AM"]["In"])
             OutVal.configure(text=data[amass + "AM"]["Out"])
@@ -1904,42 +1320,18 @@ def graphConfig(amass, dframe):
 
                             # update main canvas plot
                             plotGraph(filtFrame, amass, locationDict[amass], data["xAxis"], data["yAxis"], data["flag"])
-                            outL = 0
-                            outR = 0
-                            for yp in range(0, Kn + 1):
-                                # activeCountL = list(df[df["KN"] == y]["KT"])
-                                # activeCountL = len([x for x in activeCountL if x < (ut.curveLeft[shapeL][y] + shiftL)])
-                                # outL = outL + activeCountL
-
-                                countL = list(filtFrame[filtFrame[y] == yp][x])
-                                countL = [xp for xp in countL if xp < data[amass + "AM"]["xLB"][yp]]
-                                outL = outL + len(countL)
-                                countR = list(filtFrame[filtFrame[y] == yp][x])
-                                countR = [xp for xp in countR if xp > data[amass + "AM"]["xRB"][yp]]
-                                outR = outR + len(countR)
-                                # print("at y = ", y, "  ", "out left ", outL, "listL",
-                                # list(filterData[filterData["KN"] == y]["KT"]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
-                                # outR)
-
-                            # count if points are above configured kn max
-                            upCount = filtFrame[filtFrame[flag] == 1]
-                            upCount = upCount[upCount[y] > Kn]
-                            outUp = upCount.__len__()
-
-                            # updating data dictionary
-                            data[amass + "AM"]["In"] = len(filtFrame[filtFrame[flag] == 1]) - (outL + outR + outUp)
-                            # data[amass + "AM"]["Out"] = outL + outR + outUp
-                            data[amass + "AM"]["Active"] = len(filtFrame[filtFrame[flag] == 1])
-                            if data[amass + "AM"]["Active"] > 1:
-                                data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
-                                    ((outL + outR + outUp) / data[amass + "AM"]["Active"]) * 100, 2)) + " %)"
-                            else:
-                                data[amass + "AM"]["Out"] = outL + outR + outUp
-                            data[amass + "AM"]["Ignored"] = len(filtFrame[filtFrame[flag] == 0])
-                            data[amass + "AM"]["Total"] = len(filtFrame)
-                            if data[amass + "AM"]["Active"] > 1:
-                                data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
-                                data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
+                            state = state_models.from_legacy_dict(data)
+                            graph_helpers.recompute_airmass_stats(
+                                state,
+                                amass,
+                                filtFrame,
+                                flag,
+                                x,
+                                y,
+                                Kn,
+                                include_upper=True,
+                            )
+                            state_models.apply_to_legacy_dict(state, data)
 
                             setStats()
 
@@ -2019,42 +1411,18 @@ def graphConfig(amass, dframe):
 
                 # update main canvas plot
                 plotGraph(filtFrame, amass, locationDict[amass], data["xAxis"], data["yAxis"], data["flag"])
-                outL = 0
-                outR = 0
-                for yp in range(0, Kn + 1):
-                    # activeCountL = list(df[df["KN"] == y]["KT"])
-                    # activeCountL = len([x for x in activeCountL if x < (ut.curveLeft[shapeL][y] + shiftL)])
-                    # outL = outL + activeCountL
-
-                    countL = list(filtFrame[filtFrame[y] == yp][x])
-                    countL = [xp for xp in countL if xp < data[amass + "AM"]["xLB"][yp]]
-                    outL = outL + len(countL)
-                    countR = list(filtFrame[filtFrame[y] == yp][x])
-                    countR = [xp for xp in countR if xp > data[amass + "AM"]["xRB"][yp]]
-                    outR = outR + len(countR)
-                    # print("at y = ", y, "  ", "out left ", outL, "listL",
-                    # list(filterData[filterData["KN"] == y]["KT"]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
-                    # outR)
-
-                # count if points are above configured kn max
-                upCount = filtFrame[filtFrame[flag] == 1]
-                upCount = upCount[upCount[y] > Kn]
-                outUp = upCount.__len__()
-
-                # updating data dictionary
-                data[amass + "AM"]["In"] = len(filtFrame[filtFrame[flag] == 1]) - (outL + outR + outUp)
-                # data[amass + "AM"]["Out"] = outL + outR + outUp
-                data[amass + "AM"]["Active"] = len(filtFrame[filtFrame[flag] == 1])
-                if data[amass + "AM"]["Active"] > 1:
-                    data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
-                        ((outL + outR + outUp) / data[amass + "AM"]["Active"]) * 100, 2)) + " %)"
-                else:
-                    data[amass + "AM"]["Out"] = outL + outR + outUp
-                data[amass + "AM"]["Ignored"] = len(filtFrame[filtFrame[flag] == 0])
-                data[amass + "AM"]["Total"] = len(filtFrame)
-                if data[amass + "AM"]["Active"] > 1:
-                    data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
-                    data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
+                state = state_models.from_legacy_dict(data)
+                graph_helpers.recompute_airmass_stats(
+                    state,
+                    amass,
+                    filtFrame,
+                    flag,
+                    x,
+                    y,
+                    Kn,
+                    include_upper=True,
+                )
+                state_models.apply_to_legacy_dict(state, data)
 
                 setStats()
 
@@ -3369,56 +2737,13 @@ def density(*args):
 
 
 def findRange(previous, lower, upper):
-    if "-" in previous:
-        dashCount = previous.count("-")
-        if dashCount == 1:
-            case = 1
-        else:
-            case = 2
-    else:
-        case = 3
-
-    if case == 1:
-        tem = previous.split("-")
-        # update if and only if new lower/upper values are less/greater than previous
-        if lower < int(tem[0]):
-            tem[0] = lower
-        if upper > int(tem[1]):
-            tem[1] = upper
-        string = str(tem[0]) + "-" + str(tem[1])
-    elif case == 2:
-        if lower == upper:
-            string = str(lower)
-        else:
-            string = str(lower) + "-" + str(upper)
-    elif case == 3:
-        if lower < int(previous):
-            string = str(lower)
-        else:
-            string = previous
-    print(case)
-    return string
+    return boundary_helpers.find_range(previous, lower, upper)
 
 
 def setOutFlag(df, xAxis="KT", yAxis="KN", am="low", side="left"):
     global data
-    if len(df) > 0:
-        if data[am + "AM"]["knMax"] != "NA":
-            for yp in range(int(data[am + "AM"]["knMax"])):
-                if side == "left":
-                    pointOnCurve = data[am + "AM"]["xLB"][yp]
-                    xPoints = [point for point in list(df[df[yAxis] == yp][xAxis]) if point < pointOnCurve]
-                    if len(xPoints) > 0:
-                        for point in xPoints:
-                            df.loc[(df[yAxis] == yp) & (df[xAxis] == point), "outFlag"] = 1
-                elif side == "right":
-                    pointOnCurve = data[am + "AM"]["xRB"][yp]
-                    xPoints = [point for point in list(df[df[yAxis] == yp][xAxis]) if point > pointOnCurve]
-                    if len(xPoints) > 0:
-                        for point in xPoints:
-                            df.loc[(df[yAxis] == yp) & (df[xAxis] == point), "outFlag"] = 1
-
-            df.loc[(df[yAxis] > data[am + "AM"]["knMax"]), "outFlag"] = 1
+    state = state_models.from_legacy_dict(data)
+    boundary_helpers.set_out_flag(df, state, xAxis, yAxis, am, side)
 
 
 def save(month):
