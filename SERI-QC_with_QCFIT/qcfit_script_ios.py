@@ -70,62 +70,62 @@ def getQC0FilePath():
 
 
 def getKspace(ip):
-    miss = 9900
-    ip['XT'] = -999
-    ip['XN'] = -999
-    ip['XD'] = -999
-    ip['KT'] = -999
-    ip['KN'] = -999
-    ip['KT1'] = -999
-    ip['KN1'] = -999
-    ip['KD'] = -999
+    miss = 9900.0
+    ip['XT'] = -999.0
+    ip['XN'] = -999.0
+    ip['XD'] = -999.0
+    ip['KT'] = -999.0
+    ip['KN'] = -999.0
+    ip['KT1'] = -999.0
+    ip['KN1'] = -999.0
+    ip['KD'] = -999.0
 
-    ip['goAhead'] = 1
-    ip.loc[(ip['ETR'] == 0), 'goAhead'] = 0
+    ip['goAhead'] = 1.0
+    ip.loc[(ip['ETR'] == 0.0), 'goAhead'] = 0.0
     Global = ip[ip.columns[2]]
     Direct = ip[ip.columns[3]]
     Diffuse = ip[ip.columns[4]]
 
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss), 'XD'] = Diffuse / ip['ETR']
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss), 'XD'] = Diffuse / ip['ETR']
 
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss) & (Direct < miss), 'XN'] = Direct / ip['ETRN']
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss) & (Direct < miss), 'KT1'] = ip['XN'] + ip['XD']
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Direct < miss), 'XN'] = Direct / ip['ETRN']
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Direct < miss), 'KT1'] = ip['XN'] + ip['XD']
 
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss) & (Direct >= miss), 'KN'] = miss
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss) & (Direct >= miss), 'KT1'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Direct >= miss), 'KN'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Direct >= miss), 'KT1'] = miss
 
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss) & (Global < miss), 'XT'] = Global / ip['ETR']
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss) & (Global < miss), 'KN1'] = ip['XT'] - ip['XD']
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss) & (Global >= miss), 'XT'] = miss
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse < miss) & (Global >= miss), 'KN1'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Global < miss), 'XT'] = Global / ip['ETR']
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Global < miss), 'KN1'] = ip['XT'] - ip['XD']
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Global >= miss), 'XT'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse < miss) & (Global >= miss), 'KN1'] = miss
 
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse >= miss), 'XD'] = miss
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse >= miss), 'KT1'] = miss
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse >= miss), 'KN1'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss), 'XD'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss), 'KT1'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss), 'KN1'] = miss
 
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse >= miss) & (Direct < miss), 'XN'] = Direct / ip['ETRN']
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse >= miss) & (Direct >= miss), 'XN'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Direct < miss), 'XN'] = Direct / ip['ETRN']
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Direct >= miss), 'XN'] = miss
 
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse >= miss) & (Global < miss), 'XT'] = Global / ip['ETR']
-    ip.loc[(ip['goAhead'] == 1) & (Diffuse >= miss) & (Global >= miss), 'XT'] = miss
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Global < miss), 'XT'] = Global / ip['ETR']
+    ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Global >= miss), 'XT'] = miss
 
-    ip.loc[(ip['goAhead'] == 1) & (ip['XT'] < miss), 'KT'] = (ip['XT'] * 100)
-    ip.loc[(ip['goAhead'] == 1) & (ip['XD'] < miss), 'KD'] = (ip['XD'] * 100)
-    ip.loc[(ip['goAhead'] == 1) & (ip['XN'] < miss), 'KN'] = (ip['XN'] * 100)
-    ip.loc[(ip['goAhead'] == 1) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1'] * 100)
-    ip.loc[(ip['goAhead'] == 1) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1'] * 100)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < miss), 'KT'] = (ip['XT'] * 100)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < miss), 'KD'] = (ip['XD'] * 100)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < miss), 'KN'] = (ip['XN'] * 100)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1'] * 100)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1'] * 100)
 
-    ip.loc[(ip['goAhead'] == 1) & (ip['XT'] < -10000), 'KT'] = -10000
-    ip.loc[(ip['goAhead'] == 1) & (ip['XD'] < -10000), 'KD'] = -10000
-    ip.loc[(ip['goAhead'] == 1) & (ip['XN'] < -10000), 'KN'] = -10000
-    ip.loc[(ip['goAhead'] == 1) & (ip['KT1'] < -10000), 'KT1'] = -10000
-    ip.loc[(ip['goAhead'] == 1) & (ip['KN1'] < -10000), 'KN1'] = -10000
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < -10000.0), 'KT'] = -10000.0
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < -10000.0), 'KD'] = -10000.0
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < -10000.0), 'KN'] = -10000.0
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < -10000.0), 'KT1'] = -10000.0
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < -10000.0), 'KN1'] = -10000.0
 
-    ip.loc[(ip['goAhead'] == 1) & (ip['XT'] < miss), 'KT'] = (ip['KT']).map(int)
-    ip.loc[(ip['goAhead'] == 1) & (ip['XD'] < miss), 'KD'] = (ip['KD']).map(int)
-    ip.loc[(ip['goAhead'] == 1) & (ip['XN'] < miss), 'KN'] = (ip['KN']).map(int)
-    ip.loc[(ip['goAhead'] == 1) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1']).map(int)
-    ip.loc[(ip['goAhead'] == 1) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1']).map(int)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < miss), 'KT'] = (ip['KT']).map(int)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < miss), 'KD'] = (ip['KD']).map(int)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < miss), 'KN'] = (ip['KN']).map(int)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1']).map(int)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1']).map(int)
 
 
 def hitOpen():
@@ -893,13 +893,13 @@ def curvefitting():
     ip["bin"] = ""
     ip["residual"] = ip["XT"] - ip["XN"] - ip["XD"]
 
-    plotData = ip[ip["monthName"] == monVar.get()]
+    plotData = ip[ip["monthName"] == monVar.get()].copy()
 
     # seperate data based on airmasses
 
-    pdLow = plotData[plotData["NAM"] == 1]
-    pdMed = plotData[plotData["NAM"] == 2]
-    pdHigh = plotData[plotData["NAM"] == 3]
+    pdLow = plotData[plotData["NAM"] == 1].copy()
+    pdMed = plotData[plotData["NAM"] == 2].copy()
+    pdHigh = plotData[plotData["NAM"] == 3].copy()
 
     # identify axes based on kspaces
     if data["plane"] == 1:
@@ -1387,16 +1387,21 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
             data[amass + "AM"]["xRB"] = xRB
             data[amass + "AM"]["yRB"] = yRB
 
+        dframe = dframe.copy()
         dframe["outFlag"] = 0
         setOutFlag(dframe, xAxis, yAxis, amass, "left")
         setOutFlag(dframe, xAxis, yAxis, amass, "right")
 
-        xAct = dframe[dframe[flag] == 1][dframe["outFlag"] == 0][xAxis]
-        yAct = dframe[dframe[flag] == 1][dframe["outFlag"] == 0][yAxis]
-        xActOut = dframe[dframe[flag] == 1][dframe["outFlag"] == 1][xAxis]
-        yActOut = dframe[dframe[flag] == 1][dframe["outFlag"] == 1][yAxis]
-        xInact = dframe[dframe[flag] == 0][xAxis]
-        yInact = dframe[dframe[flag] == 0][yAxis]
+        active_mask = dframe[flag] == 1
+        out_mask = dframe["outFlag"] == 1
+        inact_mask = dframe[flag] == 0
+
+        xAct = dframe.loc[active_mask & (~out_mask), xAxis]
+        yAct = dframe.loc[active_mask & (~out_mask), yAxis]
+        xActOut = dframe.loc[active_mask & out_mask, xAxis]
+        yActOut = dframe.loc[active_mask & out_mask, yAxis]
+        xInact = dframe.loc[inact_mask, xAxis]
+        yInact = dframe.loc[inact_mask, yAxis]
 
         matplotlib.use("TKAgg")
         style.use("ggplot")
@@ -1501,37 +1506,42 @@ def graphConfig(amass, dframe):
 
     def plotForEdit(amass, dframe, flag, x, y, titleString):
         global data, editGraph
+        dframe = dframe.copy()
         dframe["outFlag"] = 0
         setOutFlag(dframe, x, y, amass, "left")
         setOutFlag(dframe, x, y, amass, "right")
 
-        xActb10 = dframe[dframe[flag] == 1][dframe["densBin"] == 1][dframe["outFlag"] == 0][x]
-        yActb10 = dframe[dframe[flag] == 1][dframe["densBin"] == 1][dframe["outFlag"] == 0][y]
-        xActb11 = dframe[dframe[flag] == 1][dframe["densBin"] == 1][dframe["outFlag"] == 1][x]
-        yActb11 = dframe[dframe[flag] == 1][dframe["densBin"] == 1][dframe["outFlag"] == 1][y]
+        active = dframe[flag] == 1
+        inact = dframe[flag] == 0
+        out = dframe["outFlag"] == 1
 
-        xActb20 = dframe[dframe[flag] == 1][dframe["densBin"] == 2][dframe["outFlag"] == 0][x]
-        yActb20 = dframe[dframe[flag] == 1][dframe["densBin"] == 2][dframe["outFlag"] == 0][y]
-        xActb21 = dframe[dframe[flag] == 1][dframe["densBin"] == 2][dframe["outFlag"] == 1][x]
-        yActb21 = dframe[dframe[flag] == 1][dframe["densBin"] == 2][dframe["outFlag"] == 1][y]
+        xActb10 = dframe.loc[active & (dframe["densBin"] == 1) & (~out), x]
+        yActb10 = dframe.loc[active & (dframe["densBin"] == 1) & (~out), y]
+        xActb11 = dframe.loc[active & (dframe["densBin"] == 1) & out, x]
+        yActb11 = dframe.loc[active & (dframe["densBin"] == 1) & out, y]
 
-        xActb30 = dframe[dframe[flag] == 1][dframe["densBin"] == 3][dframe["outFlag"] == 0][x]
-        yActb30 = dframe[dframe[flag] == 1][dframe["densBin"] == 3][dframe["outFlag"] == 0][y]
-        xActb31 = dframe[dframe[flag] == 1][dframe["densBin"] == 3][dframe["outFlag"] == 1][x]
-        yActb31 = dframe[dframe[flag] == 1][dframe["densBin"] == 3][dframe["outFlag"] == 1][y]
+        xActb20 = dframe.loc[active & (dframe["densBin"] == 2) & (~out), x]
+        yActb20 = dframe.loc[active & (dframe["densBin"] == 2) & (~out), y]
+        xActb21 = dframe.loc[active & (dframe["densBin"] == 2) & out, x]
+        yActb21 = dframe.loc[active & (dframe["densBin"] == 2) & out, y]
 
-        xActb40 = dframe[dframe[flag] == 1][dframe["densBin"] == 4][dframe["outFlag"] == 0][x]
-        yActb40 = dframe[dframe[flag] == 1][dframe["densBin"] == 4][dframe["outFlag"] == 0][y]
-        xActb41 = dframe[dframe[flag] == 1][dframe["densBin"] == 4][dframe["outFlag"] == 1][x]
-        yActb41 = dframe[dframe[flag] == 1][dframe["densBin"] == 4][dframe["outFlag"] == 1][y]
+        xActb30 = dframe.loc[active & (dframe["densBin"] == 3) & (~out), x]
+        yActb30 = dframe.loc[active & (dframe["densBin"] == 3) & (~out), y]
+        xActb31 = dframe.loc[active & (dframe["densBin"] == 3) & out, x]
+        yActb31 = dframe.loc[active & (dframe["densBin"] == 3) & out, y]
 
-        xActb50 = dframe[dframe[flag] == 1][dframe["densBin"] == 5][dframe["outFlag"] == 0][x]
-        yActb50 = dframe[dframe[flag] == 1][dframe["densBin"] == 5][dframe["outFlag"] == 0][y]
-        xActb51 = dframe[dframe[flag] == 1][dframe["densBin"] == 5][dframe["outFlag"] == 1][x]
-        yActb51 = dframe[dframe[flag] == 1][dframe["densBin"] == 5][dframe["outFlag"] == 1][y]
+        xActb40 = dframe.loc[active & (dframe["densBin"] == 4) & (~out), x]
+        yActb40 = dframe.loc[active & (dframe["densBin"] == 4) & (~out), y]
+        xActb41 = dframe.loc[active & (dframe["densBin"] == 4) & out, x]
+        yActb41 = dframe.loc[active & (dframe["densBin"] == 4) & out, y]
 
-        xInact = dframe[dframe[flag] == 0][x]
-        yInact = dframe[dframe[flag] == 0][y]
+        xActb50 = dframe.loc[active & (dframe["densBin"] == 5) & (~out), x]
+        yActb50 = dframe.loc[active & (dframe["densBin"] == 5) & (~out), y]
+        xActb51 = dframe.loc[active & (dframe["densBin"] == 5) & out, x]
+        yActb51 = dframe.loc[active & (dframe["densBin"] == 5) & out, y]
+
+        xInact = dframe.loc[inact, x]
+        yInact = dframe.loc[inact, y]
 
         f = plt.figure(figsize=(6, 5), dpi=100)
         ax = f.add_subplot(111)
@@ -2768,16 +2778,21 @@ def plotByYear(*args):
 
                 if len(dframe) > 0:
 
+                    dframe = dframe.copy()
                     dframe["outFlag"] = 0
                     setOutFlag(dframe, xAxis, yAxis, amass, "left")
                     setOutFlag(dframe, xAxis, yAxis, amass, "right")
 
-                    xAct = dframe[dframe[flag] == 1][dframe["outFlag"] == 0][xAxis]
-                    yAct = dframe[dframe[flag] == 1][dframe["outFlag"] == 0][yAxis]
-                    xActOut = dframe[dframe[flag] == 1][dframe["outFlag"] == 1][xAxis]
-                    yActOut = dframe[dframe[flag] == 1][dframe["outFlag"] == 1][yAxis]
-                    xInact = dframe[dframe[flag] == 0][xAxis]
-                    yInact = dframe[dframe[flag] == 0][yAxis]
+                    active_mask = dframe[flag] == 1
+                    out_mask = dframe["outFlag"] == 1
+                    inact_mask = dframe[flag] == 0
+
+                    xAct = dframe.loc[active_mask & (~out_mask), xAxis]
+                    yAct = dframe.loc[active_mask & (~out_mask), yAxis]
+                    xActOut = dframe.loc[active_mask & out_mask, xAxis]
+                    yActOut = dframe.loc[active_mask & out_mask, yAxis]
+                    xInact = dframe.loc[inact_mask, xAxis]
+                    yInact = dframe.loc[inact_mask, yAxis]
 
                     xLB = data[amass + "AM"]["xLB"]
                     xRB = data[amass + "AM"]["xRB"]
@@ -2992,19 +3007,23 @@ def density(*args):
     bin4Label.config(text="----")
     bin5Label.config(text="----")
 
+    pdLow = pdLow.copy()
+    pdMed = pdMed.copy()
+    pdHigh = pdHigh.copy()
+
     # make sure merges dont make any definition change in data frame is yes revert
 
     lastIndex = list(pdLow.columns).index("bin")
     if (pdLow.shape[1] > lastIndex + 1):
-        pdLow.drop(pdLow.iloc[:, lastIndex + 1:], inplace=True, axis=1)
+        pdLow = pdLow.iloc[:, :lastIndex + 1].copy()
 
     lastIndex = list(pdMed.columns).index("bin")
     if (pdMed.shape[1] > lastIndex + 1):
-        pdMed.drop(pdMed.iloc[:, lastIndex + 1:], inplace=True, axis=1)
+        pdMed = pdMed.iloc[:, :lastIndex + 1].copy()
 
     lastIndex = list(pdHigh.columns).index("bin")
     if (pdHigh.shape[1] > lastIndex + 1):
-        pdHigh.drop(pdHigh.iloc[:, lastIndex + 1:], inplace=True, axis=1)
+        pdHigh = pdHigh.iloc[:, :lastIndex + 1].copy()
 
     pdLow.loc[(pdLow["NAM"] == 1), "ldID"] = "ldID" + (pdLow[x].map(int)).map(str) + (pdLow[y].map(int)).map(str) + \
                                              pdLow["month"] + pdLow[flag].map(str) + str(1)
@@ -3017,12 +3036,10 @@ def density(*args):
         str) + pdHigh["month"] + pdHigh[flag].map(str) + str(3)
     pdHigh["density3"] = pdHigh["hdID"].map(pdHigh['hdID'].value_counts())
 
-    lFilt = pdLow[pdLow["NAM"] == 1][pdLow["lowExclude"] == 0][
-        pdLow["month"] == ((monVar.get()).upper())[:3]][pdLow[flag] == 1]
-    mFilt = pdMed[pdMed["NAM"] == 2][pdMed["medExclude"] == 0][
-        pdMed["month"] == ((monVar.get()).upper())[:3]][pdMed[flag] == 1]
-    hFilt = pdHigh[pdHigh["NAM"] == 3][pdHigh["highExclude"] == 0][
-        pdHigh["month"] == ((monVar.get()).upper())[:3]][pdHigh[flag] == 1]
+    month_key = ((monVar.get()).upper())[:3]
+    lFilt = pdLow.loc[(pdLow["NAM"] == 1) & (pdLow["lowExclude"] == 0) & (pdLow["month"] == month_key) & (pdLow[flag] == 1)]
+    mFilt = pdMed.loc[(pdMed["NAM"] == 2) & (pdMed["medExclude"] == 0) & (pdMed["month"] == month_key) & (pdMed[flag] == 1)]
+    hFilt = pdHigh.loc[(pdHigh["NAM"] == 3) & (pdHigh["highExclude"] == 0) & (pdHigh["month"] == month_key) & (pdHigh[flag] == 1)]
 
     lDF = lFilt.filter(["ldID", "density1"], axis=1)
     lDF.columns = ["id", "density"]
@@ -3040,9 +3057,9 @@ def density(*args):
         densityData.loc[(densityData["density"] == d), "frequency"] = len(densDF[densDF["density"] == d])
 
     # create density and bin columns in pd frames:
-    pdLow["outFlag"] = 0
-    pdMed["outFlag"] = 0
-    pdHigh["outFlag"] = 0
+    pdLow["outFlag"] = pd.Series(0, index=pdLow.index, dtype="int64")
+    pdMed["outFlag"] = pd.Series(0, index=pdMed.index, dtype="int64")
+    pdHigh["outFlag"] = pd.Series(0, index=pdHigh.index, dtype="int64")
 
     if densVar.get() == 1:
         expEntry.configure(state=tk.DISABLED)
@@ -3239,33 +3256,37 @@ def density(*args):
             else:
                 if (len(dframe[dframe[flag] == 1]) > 0):
 
-                    xActb10 = dframe[dframe[flag] == 1][dframe["densBin"] == 1][dframe["outFlag"] == 0][x]
-                    yActb10 = dframe[dframe[flag] == 1][dframe["densBin"] == 1][dframe["outFlag"] == 0][y]
-                    xActb11 = dframe[dframe[flag] == 1][dframe["densBin"] == 1][dframe["outFlag"] == 1][x]
-                    yActb11 = dframe[dframe[flag] == 1][dframe["densBin"] == 1][dframe["outFlag"] == 1][y]
+                    active = dframe[flag] == 1
+                    inact = dframe[flag] == 0
+                    out = dframe["outFlag"] == 1
 
-                    xActb20 = dframe[dframe[flag] == 1][dframe["densBin"] == 2][dframe["outFlag"] == 0][x]
-                    yActb20 = dframe[dframe[flag] == 1][dframe["densBin"] == 2][dframe["outFlag"] == 0][y]
-                    xActb21 = dframe[dframe[flag] == 1][dframe["densBin"] == 2][dframe["outFlag"] == 1][x]
-                    yActb21 = dframe[dframe[flag] == 1][dframe["densBin"] == 2][dframe["outFlag"] == 1][y]
+                    xActb10 = dframe.loc[active & (dframe["densBin"] == 1) & (~out), x]
+                    yActb10 = dframe.loc[active & (dframe["densBin"] == 1) & (~out), y]
+                    xActb11 = dframe.loc[active & (dframe["densBin"] == 1) & out, x]
+                    yActb11 = dframe.loc[active & (dframe["densBin"] == 1) & out, y]
 
-                    xActb30 = dframe[dframe[flag] == 1][dframe["densBin"] == 3][dframe["outFlag"] == 0][x]
-                    yActb30 = dframe[dframe[flag] == 1][dframe["densBin"] == 3][dframe["outFlag"] == 0][y]
-                    xActb31 = dframe[dframe[flag] == 1][dframe["densBin"] == 3][dframe["outFlag"] == 1][x]
-                    yActb31 = dframe[dframe[flag] == 1][dframe["densBin"] == 3][dframe["outFlag"] == 1][y]
+                    xActb20 = dframe.loc[active & (dframe["densBin"] == 2) & (~out), x]
+                    yActb20 = dframe.loc[active & (dframe["densBin"] == 2) & (~out), y]
+                    xActb21 = dframe.loc[active & (dframe["densBin"] == 2) & out, x]
+                    yActb21 = dframe.loc[active & (dframe["densBin"] == 2) & out, y]
 
-                    xActb40 = dframe[dframe[flag] == 1][dframe["densBin"] == 4][dframe["outFlag"] == 0][x]
-                    yActb40 = dframe[dframe[flag] == 1][dframe["densBin"] == 4][dframe["outFlag"] == 0][y]
-                    xActb41 = dframe[dframe[flag] == 1][dframe["densBin"] == 4][dframe["outFlag"] == 1][x]
-                    yActb41 = dframe[dframe[flag] == 1][dframe["densBin"] == 4][dframe["outFlag"] == 1][y]
+                    xActb30 = dframe.loc[active & (dframe["densBin"] == 3) & (~out), x]
+                    yActb30 = dframe.loc[active & (dframe["densBin"] == 3) & (~out), y]
+                    xActb31 = dframe.loc[active & (dframe["densBin"] == 3) & out, x]
+                    yActb31 = dframe.loc[active & (dframe["densBin"] == 3) & out, y]
 
-                    xActb50 = dframe[dframe[flag] == 1][dframe["densBin"] == 5][dframe["outFlag"] == 0][x]
-                    yActb50 = dframe[dframe[flag] == 1][dframe["densBin"] == 5][dframe["outFlag"] == 0][y]
-                    xActb51 = dframe[dframe[flag] == 1][dframe["densBin"] == 5][dframe["outFlag"] == 1][x]
-                    yActb51 = dframe[dframe[flag] == 1][dframe["densBin"] == 5][dframe["outFlag"] == 1][y]
+                    xActb40 = dframe.loc[active & (dframe["densBin"] == 4) & (~out), x]
+                    yActb40 = dframe.loc[active & (dframe["densBin"] == 4) & (~out), y]
+                    xActb41 = dframe.loc[active & (dframe["densBin"] == 4) & out, x]
+                    yActb41 = dframe.loc[active & (dframe["densBin"] == 4) & out, y]
 
-                    xInact = dframe[dframe[flag] == 0][x]
-                    yInact = dframe[dframe[flag] == 0][y]
+                    xActb50 = dframe.loc[active & (dframe["densBin"] == 5) & (~out), x]
+                    yActb50 = dframe.loc[active & (dframe["densBin"] == 5) & (~out), y]
+                    xActb51 = dframe.loc[active & (dframe["densBin"] == 5) & out, x]
+                    yActb51 = dframe.loc[active & (dframe["densBin"] == 5) & out, y]
+
+                    xInact = dframe.loc[inact, x]
+                    yInact = dframe.loc[inact, y]
 
                     xLB = data[amass + "AM"]["xLB"]
                     xRB = data[amass + "AM"]["xRB"]
@@ -3282,36 +3303,36 @@ def density(*args):
 
                     if len(xActb10) > 0:
                         a.scatter(xActb10, yActb10, color='orangered', marker=".")
-                        lower = int(dframe[dframe[flag] == 1][dframe["densBin"] == 1]["density"].min())
-                        upper = int(dframe[dframe[flag] == 1][dframe["densBin"] == 1]["density"].max())
+                        lower = int(dframe.loc[active & (dframe["densBin"] == 1), "density"].min())
+                        upper = int(dframe.loc[active & (dframe["densBin"] == 1), "density"].max())
                         previous = bin1Label.cget("text")
                         string = findRange(previous, lower, upper)
                         bin1Label.config(text=string)
                     if len(xActb20) > 0:
                         a.scatter(xActb20, yActb20, color='darkorange', marker=".")
-                        lower = int(dframe[dframe[flag] == 1][dframe["densBin"] == 2]["density"].min())
-                        upper = int(dframe[dframe[flag] == 1][dframe["densBin"] == 2]["density"].max())
+                        lower = int(dframe.loc[active & (dframe["densBin"] == 2), "density"].min())
+                        upper = int(dframe.loc[active & (dframe["densBin"] == 2), "density"].max())
                         previous = bin2Label.cget("text")
                         string = findRange(previous, lower, upper)
                         bin2Label.config(text=string)
                     if len(xActb30) > 0:
                         a.scatter(xActb30, yActb30, color='orange', marker=".")
-                        lower = int(dframe[dframe[flag] == 1][dframe["densBin"] == 3]["density"].min())
-                        upper = int(dframe[dframe[flag] == 1][dframe["densBin"] == 3]["density"].max())
+                        lower = int(dframe.loc[active & (dframe["densBin"] == 3), "density"].min())
+                        upper = int(dframe.loc[active & (dframe["densBin"] == 3), "density"].max())
                         previous = bin3Label.cget("text")
                         string = findRange(previous, lower, upper)
                         bin3Label.config(text=string)
                     if len(xActb40) > 0:
                         a.scatter(xActb40, yActb40, color='gold', marker=".")
-                        lower = int(dframe[dframe[flag] == 1][dframe["densBin"] == 4]["density"].min())
-                        upper = int(dframe[dframe[flag] == 1][dframe["densBin"] == 4]["density"].max())
+                        lower = int(dframe.loc[active & (dframe["densBin"] == 4), "density"].min())
+                        upper = int(dframe.loc[active & (dframe["densBin"] == 4), "density"].max())
                         previous = bin4Label.cget("text")
                         string = findRange(previous, lower, upper)
                         bin4Label.config(text=string)
                     if len(xActb50) > 0:
                         a.scatter(xActb50, yActb50, color='yellow', marker=".")
-                        lower = int(dframe[dframe[flag] == 1][dframe["densBin"] == 5]["density"].min())
-                        upper = int(dframe[dframe[flag] == 1][dframe["densBin"] == 5]["density"].max())
+                        lower = int(dframe.loc[active & (dframe["densBin"] == 5), "density"].min())
+                        upper = int(dframe.loc[active & (dframe["densBin"] == 5), "density"].max())
                         previous = bin5Label.cget("text")
                         string = findRange(previous, lower, upper)
                         bin5Label.config(text=string)

@@ -614,10 +614,10 @@ def calculateZenith(ipData, repFreq, measFreq, avg, latitude, longitude, elevati
 
     # dateTimeIndex=np.array(ipData['date-UTC'])
     lat_lon = np.array([latitude, longitude])
-    ipData['ETRN'] = 0
-    ipData['solzen'] = 0
-    ipData['sunup'] = 0
-    ipData['ETR'] = 0
+    ipData['ETRN'] = 0.0
+    ipData['solzen'] = 0.0
+    ipData['sunup'] = 0.0
+    ipData['ETR'] = 0.0
 
     # ipData['SZA'] = SPA.apparent_zenith(dateTimeIndex, lat_lon, elev=elevation, pressure=pressure,
     # temperature=temperature,  atmospheric_refraction=0.5667, delta_t=64.17)
