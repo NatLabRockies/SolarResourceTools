@@ -1031,7 +1031,12 @@ def graphConfig(amass, dframe):
         ax = f.add_subplot(111)
         ax.clear()
 
-        f.canvas.set_window_title(data["siteIdentifier"] + " " + "- " + amass.upper() + " - QCFIT")
+        window_title = data["siteIdentifier"] + " " + "- " + amass.upper() + " - QCFIT"
+        mngr = plt.get_current_fig_manager()
+        if hasattr(mngr, "set_window_title"):
+            mngr.set_window_title(window_title)
+        elif hasattr(mngr, "window") and hasattr(mngr.window, "wm_title"):
+            mngr.window.wm_title(window_title)
         style.use("ggplot")
         line = np.linspace(0, 100, 101)
 
@@ -1074,7 +1079,7 @@ def graphConfig(amass, dframe):
         local_am_state = state_models.get_airmass(local_state, amass)
         ax.plot(local_am_state.xLB, local_am_state.yLB, color="green")  # line no 1
         ax.plot(local_am_state.xRB, local_am_state.yRB, color="green")  # line no 2
-        toggle_selector.RS = RectangleSelector(ax, getCoordinates, drawtype='box', useblit=False, button=[1],
+        toggle_selector.RS = RectangleSelector(ax, getCoordinates, useblit=False, button=[1],
                                                minspanx=5, minspany=5, spancoords='pixels',
                                                interactive=True)
         plt.connect('key_press_event', toggle_selector)
@@ -2298,7 +2303,11 @@ def freqZoomed(event):
         f = plt.figure(figsize=(3, 2.5), dpi=100)
         ax = f.add_subplot(111)
         ax.clear()
-        f.canvas.set_window_title("QCFIT")
+        mngr = plt.get_current_fig_manager()
+        if hasattr(mngr, "set_window_title"):
+            mngr.set_window_title("QCFIT")
+        elif hasattr(mngr, "window") and hasattr(mngr.window, "wm_title"):
+            mngr.window.wm_title("QCFIT")
 
         titleFont = {'family': 'serif', 'color': 'black', 'weight': 'heavy', 'size': 25}
         labelFont = {'family': 'serif', 'color': 'red', 'weight': 'normal', 'size': 12}
