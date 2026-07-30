@@ -11,7 +11,7 @@ import numpy as np
 import os
 
 
-def readFile(name):  # pass the *.qc0 file name
+def readFile(name):  # pass the *.qa0 file name
     f = (open(name, 'r'))
     val = (f.read())
     return val

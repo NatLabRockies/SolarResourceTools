@@ -33,9 +33,9 @@ def getPath(format):
     root = tk.Tk()
     root.withdraw()
     root.update()
-    if format == "qc0":
-        path = tkinter.filedialog.askopenfilename(parent=root, initialdir="/", title='Upload QC0 file',
-                                                  filetypes=(("QC0 files", "*.QC0"), ("all files", "*.*")))
+    if format == "qa0":
+        path = tkinter.filedialog.askopenfilename(parent=root, initialdir="/", title='Upload QA0 file',
+                                                  filetypes=(("QA0 files", "*.QA0"), ("all files", "*.*")))
     if format == "csv":
         path = tkinter.filedialog.askopenfilename(parent=root, initialdir="/", title='Upload CSV file',
                                                   filetypes=(("csv files", "*.csv"), ("all files", "*.*")))

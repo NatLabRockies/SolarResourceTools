@@ -51,7 +51,7 @@ def getFilePath():
     return path
 
 
-def getQC0FilePath():
+def getQA0FilePath():
     root = tk.Tk()
     root.withdraw()
 
@@ -64,8 +64,8 @@ def getQC0FilePath():
     center_y = int((screen_height - dialog_height) / 2)
     root.geometry(f"{dialog_width}x{dialog_height}+{center_x}+{center_y}")
 
-    path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload QC0 file',
-                                              filetypes=(("QC0 files", "*.QC0"), ("all files", "*.*")))
+    path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload QA0 file',
+                                              filetypes=(("QA0 files", "*.QA0"), ("all files", "*.*")))
     return path
 
 
@@ -131,12 +131,12 @@ def getKspace(ip):
 def hitOpen():
     def newSite():
 
-        def nsQC0Browse():
+        def nsQA0Browse():
             global data, siteInfo
             nsPath = tkinter.filedialog.askdirectory(parent=newSiteRoot)
-            data["qc0Path"] = nsPath + "/" + nssiteIDEntry.get() + ".qc0"
-            qc0PathLabel = tk.Label(newSiteRoot, text=nsPath, font=(None, 12), anchor="w")
-            qc0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
+            data["qa0Path"] = nsPath + "/" + nssiteIDEntry.get() + ".qa0"
+            qa0PathLabel = tk.Label(newSiteRoot, text=nsPath, font=(None, 12), anchor="w")
+            qa0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
 
         def nsDatafolBrowse():
             # global data
@@ -149,7 +149,7 @@ def hitOpen():
             # global data, siteInfo
             try:
                 if nssiteIDEntry.get() == "" or nssiteDescEntry.get() == "" or nsLatEntry.get() == "" or nsLongEntry.get() == "" or nsTZEntry.get() == "" or \
-                        data["qc0Path"] == "":
+                        data["qa0Path"] == "":
                     messagebox.showerror("Error", "Bad input! Please provide all the values.")
                 else:
                     data["siteCode"] = nssiteIDEntry.get()
@@ -176,8 +176,8 @@ def hitOpen():
                             if nsplaneVar == 3:
                                 data["plane"] = 3
                                 # r3.select()
-                    # creating blank Qc0 file
-                    f = open('dataFiles/blankQC0', 'r')
+                    # creating blank QA0 file
+                    f = open('dataFiles/blankQA0', 'r')
                     rawData = f.read()
                     f.close()
                     f.flush
@@ -202,14 +202,14 @@ def hitOpen():
                     rawData = rawData.replace("3-Component Filter:", "3-Component Filter: " + str(data["threshold"]))
                     rawData = rawData.replace("comments:", "comments: " + data["comments"])
 
-                    f = open(data["qc0Path"], 'w+')
+                    f = open(data["qa0Path"], 'w+')
                     f.write(rawData)
 
                     f.close
                     f.flush()
 
                     # updating siteinfo Dict
-                    siteInfo[data["siteIdentifier"]] = data["qc0Path"]
+                    siteInfo[data["siteIdentifier"]] = data["qa0Path"]
                     siteOptList.append(data["siteIdentifier"])
                     menu = siteOption.children["menu"]
                     menu.delete(0, "end")
@@ -232,7 +232,7 @@ def hitOpen():
             except ValueError:
                 messagebox.showerror("Error",
                                      "Bad input" + nssiteIDEntry.get() + nssiteDescEntry.get() + nsLatEntry.get() + nsLongEntry.get() + nsTZEntry.get() + nsElevVar.get() +
-                                     data["qc0Path"])
+                                     data["qa0Path"])
 
         def nsCancel():
             openRoot.deiconify()
@@ -281,9 +281,9 @@ def hitOpen():
         comments = tkst.ScrolledText(commentFrame)
         comments.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-        nsqcPathLabel = tk.Label(nsFrame, text="QC0 Path", font=(None, 12), anchor="w")
+        nsqcPathLabel = tk.Label(nsFrame, text="QA0 Path", font=(None, 12), anchor="w")
         nsqcPathLabel.place(relx=0.05, rely=0.40, relwidth=0.25, relheight=0.03)
-        qcBrowseButton = tk.Button(nsFrame, text="Browse", command=nsQC0Browse)
+        qcBrowseButton = tk.Button(nsFrame, text="Browse", command=nsQA0Browse)
         qcBrowseButton.place(relx=0.35, rely=0.40, relwidth=0.15, relheight=0.04)
 
         # Creating defaults frame
@@ -345,24 +345,24 @@ def hitOpen():
 
         newSiteRoot.mainloop()
 
-    def browseQC0():
+    def browseQA0():
         global data, boundary, siteInfo
-        qc0Path = getQC0FilePath()
-        if len(qc0Path) > 1:
-            data["qc0Path"] = qc0Path
-            existQC0Data = utills.readFile(qc0Path)
-            index = existQC0Data.find("Site Identifier:")
-            string = existQC0Data[index + len("Site Identifier:"):]
+        qa0Path = getQA0FilePath()
+        if len(qa0Path) > 1:
+            data["qa0Path"] = qa0Path
+            existQA0Data = utills.readFile(qa0Path)
+            index = existQA0Data.find("Site Identifier:")
+            string = existQA0Data[index + len("Site Identifier:"):]
             siteID = string.split("\n")
             data["siteIdentifier"] = siteID[0].strip()
             siteOptList.append(siteID[0].strip())
-            index = existQC0Data.find('Data Folder: ')
-            string = existQC0Data[index + len('Data Folder: '):]
+            index = existQA0Data.find('Data Folder: ')
+            string = existQA0Data[index + len('Data Folder: '):]
             string = string.split("\n")
             data["defaultDataFolder"] = string[0]
 
             # updating siteinfo Dict
-            siteInfo[data["siteIdentifier"]] = data["qc0Path"]
+            siteInfo[data["siteIdentifier"]] = data["qa0Path"]
 
             menu = siteOption.children["menu"]
             menu.delete(0, "end")
@@ -431,9 +431,9 @@ def hitOpen():
                 monthToSave = data["month"]
                 save(monthToSave)
             resetStats()
-        # read QC0 file
-        qc0dat = utills.readFile(data["qc0Path"])
-        boundary = utills.getBoundariesTable(qc0dat)
+        # read QA0 file
+        qa0dat = utills.readFile(data["qa0Path"])
+        boundary = utills.getBoundariesTable(qa0dat)
         temp = boundary
         data["integration"] = int(integVar.get())
 
@@ -537,7 +537,7 @@ def hitOpen():
     newSiteButton = tk.Button(mainFrame, text="New Site", command=newSite)
     newSiteButton.place(relx=0.54, rely=0.2, relwidth=0.20, relheight=0.1)
 
-    newSiteBrowseButton = tk.Button(mainFrame, text="Browse", command=browseQC0)
+    newSiteBrowseButton = tk.Button(mainFrame, text="Browse", command=browseQA0)
     newSiteBrowseButton.place(relx=0.77, rely=0.2, relwidth=0.20, relheight=0.1)
 
     qcfLabel = tk.Label(mainFrame, text="QCF Data File", font=(None, 12), anchor="w")
@@ -579,12 +579,12 @@ def updateSiteInfo(*args):
     if optVar.get() == "select a site":
         return
     else:
-        existQC0Data = utills.readFile(siteInfo[optVar.get()])
-        latitude = utills.pickValue(existQC0Data, 'Latitude:')
-        longitude = utills.pickValue(existQC0Data, 'Longitude:')
-        timeZone = int(float(utills.pickValue(existQC0Data, 'Time Zone:')))
-        elevation = float(utills.pickValue(existQC0Data, 'Elevation:'))
-        threshold = utills.pickValue(existQC0Data, '3-Component Filter:')
+        existQA0Data = utills.readFile(siteInfo[optVar.get()])
+        latitude = utills.pickValue(existQA0Data, 'Latitude:')
+        longitude = utills.pickValue(existQA0Data, 'Longitude:')
+        timeZone = int(float(utills.pickValue(existQA0Data, 'Time Zone:')))
+        elevation = float(utills.pickValue(existQA0Data, 'Elevation:'))
+        threshold = utills.pickValue(existQA0Data, '3-Component Filter:')
         if threshold == '':
             threshold = 1
         else:
@@ -593,9 +593,9 @@ def updateSiteInfo(*args):
         data["longitude"] = longitude
         data["timeZone"] = int(timeZone)
         data["elevation"] = elevation
-        data["integration"] = int(utills.pickValue(existQC0Data, 'Integration (minutes):'))
+        data["integration"] = int(utills.pickValue(existQA0Data, 'Integration (minutes):'))
 
-        _plane = (utills.pickValue(existQC0Data, 'Plane:'))
+        _plane = (utills.pickValue(existQA0Data, 'Plane:'))
         if _plane == "":
             data["plane"] = 1
         else:
@@ -613,159 +613,159 @@ def hitEdit():
             monthToSave = data["month"]
             save(monthToSave)
 
-    qc0Path = getQC0FilePath()
-    if len(qc0Path) > 1:
-        QC0Data = utills.readFile(qc0Path)
+    qa0Path = getQA0FilePath()
+    if len(qa0Path) > 1:
+        QA0Data = utills.readFile(qa0Path)
 
-    index = QC0Data.find("Site Identifier:")
-    string = QC0Data[index + len("Site Identifier:"):]
+    index = QA0Data.find("Site Identifier:")
+    string = QA0Data[index + len("Site Identifier:"):]
     siteinf = string.split("\n")
     siteinf = siteinf[0].split(",")
 
     siteid = siteinf[0]
     siteDesc = siteinf[1]
-    latitude = utills.pickValue(QC0Data, 'Latitude:')
-    longitude = utills.pickValue(QC0Data, 'Longitude:')
-    timeZone = int(utills.pickValue(QC0Data, 'Time Zone:'))
-    elevation = float(utills.pickValue(QC0Data, 'Elevation:'))
-    threshold = utills.pickValue(QC0Data, '3-Component Filter:')
+    latitude = utills.pickValue(QA0Data, 'Latitude:')
+    longitude = utills.pickValue(QA0Data, 'Longitude:')
+    timeZone = int(utills.pickValue(QA0Data, 'Time Zone:'))
+    elevation = float(utills.pickValue(QA0Data, 'Elevation:'))
+    threshold = utills.pickValue(QA0Data, '3-Component Filter:')
     if threshold == 0:
         threshold = 1
-    integration = utills.pickValue(QC0Data, 'Integration (minutes):')
-    plane = utills.pickValue(QC0Data, 'Plane:')
-    index = QC0Data.find("Data Folder: ")
-    string = QC0Data[index + len("Data Folder: "):]
+    integration = utills.pickValue(QA0Data, 'Integration (minutes):')
+    plane = utills.pickValue(QA0Data, 'Plane:')
+    index = QA0Data.find("Data Folder: ")
+    string = QA0Data[index + len("Data Folder: "):]
     defFolder = string.split("\n")[0]
-    index = QC0Data.find("comments:")
+    index = QA0Data.find("comments:")
     if index > 1:
-        comments = QC0Data[index + len("comments:"):]
+        comments = QA0Data[index + len("comments:"):]
     else:
         comments = ""
 
-    def editQC0Browse():
+    def editQA0Browse():
 
-        editQC0Path = tkinter.filedialog.askdirectory(parent=editQC0Root)
-        qc0PathLabel.config(text=editQC0Path)
+        editQA0Path = tkinter.filedialog.askdirectory(parent=editQA0Root)
+        qa0PathLabel.config(text=editQA0Path)
 
-    def editQC0DatafolBrowse():
+    def editQA0DatafolBrowse():
         # global data
-        dfPath = tkinter.filedialog.askdirectory(parent=editQC0Root)
+        dfPath = tkinter.filedialog.askdirectory(parent=editQA0Root)
         dfPathLabel.config(text=dfPath)
 
-    def editQC0OK(plane):
+    def editQA0OK(plane):
         # global data, siteInfo
         try:
-            if editQC0siteIDEntry.get() == "" or editQC0siteDescEntry.get() == "" or editQC0LatEntry.get() == "" or editQC0LongEntry.get() == "" or editQC0TZEntry.get() == "":
+            if editQA0siteIDEntry.get() == "" or editQA0siteDescEntry.get() == "" or editQA0LatEntry.get() == "" or editQA0LongEntry.get() == "" or editQA0TZEntry.get() == "":
                 messagebox.showerror("Error", "Bad input! Please provide all the values.")
             else:
-                # creating blank Qc0 file
-                f = open('dataFiles/blankQC0', 'r')
+                # creating blank QA0 file
+                f = open('dataFiles/blankQA0', 'r')
                 rawData = f.read()
                 f.close()
                 f.flush
                 rawData = rawData.replace("Site Identifier:", "Site Identifier: " + str(edit_siteid.get()) + ", " + str(
                     edit_siteDesc.get()))
-                rawData = rawData.replace(" --- Latitude:", " --- Latitude: " + str(editQC0LatEntry.get()))
-                rawData = rawData.replace(" -- Longitude:", " -- Longitude: " + str(editQC0LongEntry.get()))
-                rawData = rawData.replace(" -- Time Zone:", " -- Time Zone: " + str(editQC0TZEntry.get()))
+                rawData = rawData.replace(" --- Latitude:", " --- Latitude: " + str(editQA0LatEntry.get()))
+                rawData = rawData.replace(" -- Longitude:", " -- Longitude: " + str(editQA0LongEntry.get()))
+                rawData = rawData.replace(" -- Time Zone:", " -- Time Zone: " + str(editQA0TZEntry.get()))
                 rawData = rawData.replace("Integration (minutes):",
-                                          "Integration (minutes): " + str(editQC0IntegVar.get()))
+                                          "Integration (minutes): " + str(editQA0IntegVar.get()))
                 rawData = rawData.replace("Data Folder:", "Data Folder: " + defFolder)
-                rawData = rawData.replace("Elevation:", "Elevation: " + str(editQC0ElevVar.get()))
-                if (editQC0planeVar.get() == 1):
+                rawData = rawData.replace("Elevation:", "Elevation: " + str(editQA0ElevVar.get()))
+                if (editQA0planeVar.get() == 1):
                     plane = "0 Kt-Kn"
                 else:
-                    if editQC0planeVar.get() == 2:
+                    if editQA0planeVar.get() == 2:
                         plane = "1 Kt-Kd"
                     else:
-                        if editQC0planeVar.get() == 3:
+                        if editQA0planeVar.get() == 3:
                             plane = "2 Kn-Kd"
                 rawData = rawData.replace("Plane:", "Plane: " + plane)
                 # if data["3compFilter"] == 1:
                 rawData = rawData.replace("3-Component Filter:", "3-Component Filter: " + str(threshold))
                 rawData = rawData.replace("comments:", "comments: " + comments)
 
-                f = open(qc0Path, 'w+')
+                f = open(qa0Path, 'w+')
                 f.write(rawData)
 
                 f.close
                 f.flush()
-                editQC0Root.withdraw()
+                editQA0Root.withdraw()
         except ValueError:
             messagebox.showerror("Error",
-                                 "Bad input" + editQC0siteIDEntry.get() + editQC0siteDescEntry.get() + editQC0LatEntry.get() + editQC0LongEntry.get() + editQC0TZEntry.get() + editQC0ElevVar.get() +
-                                 data["qc0Path"])
+                                 "Bad input" + editQA0siteIDEntry.get() + editQA0siteDescEntry.get() + editQA0LatEntry.get() + editQA0LongEntry.get() + editQA0TZEntry.get() + editQA0ElevVar.get() +
+                                 data["qa0Path"])
 
-    def editQC0Cancel():
-        editQC0Root.withdraw()
+    def editQA0Cancel():
+        editQA0Root.withdraw()
 
     mainRoot.deiconify()
     # openRoot.configure(state=tk.DISABLED)
-    editQC0Root = tk.Tk()
-    editQC0Root.wm_geometry("500x600+500+250")
-    editQC0Root.title("Edit QC0")
+    editQA0Root = tk.Tk()
+    editQA0Root.wm_geometry("500x600+500+250")
+    editQA0Root.title("Edit QA0")
 
-    editQC0Frame = tk.Frame(editQC0Root)
-    editQC0Frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+    editQA0Frame = tk.Frame(editQA0Root)
+    editQA0Frame.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-    editQC0siteIDLabel = tk.Label(editQC0Frame, text="SiteID", font=(None, 12), anchor="w")
-    editQC0siteIDLabel.place(relx=0.05, rely=0.02, relwidth=0.2, relheight=0.03)
+    editQA0siteIDLabel = tk.Label(editQA0Frame, text="SiteID", font=(None, 12), anchor="w")
+    editQA0siteIDLabel.place(relx=0.05, rely=0.02, relwidth=0.2, relheight=0.03)
 
-    edit_siteid = tk.StringVar(editQC0Frame)
-    editQC0siteIDEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_siteid)
-    editQC0siteIDEntry.place(relx=0.05, rely=0.055, relwidth=0.2, relheight=0.04)
+    edit_siteid = tk.StringVar(editQA0Frame)
+    editQA0siteIDEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_siteid)
+    editQA0siteIDEntry.place(relx=0.05, rely=0.055, relwidth=0.2, relheight=0.04)
     edit_siteid.set(siteid)
 
-    editQC0siteDescLabel = tk.Label(editQC0Frame, text="Site Description", font=(None, 12), anchor="w")
-    editQC0siteDescLabel.place(relx=0.30, rely=0.02, relwidth=0.6, relheight=0.03)
+    editQA0siteDescLabel = tk.Label(editQA0Frame, text="Site Description", font=(None, 12), anchor="w")
+    editQA0siteDescLabel.place(relx=0.30, rely=0.02, relwidth=0.6, relheight=0.03)
 
-    edit_siteDesc = tk.StringVar(editQC0Frame)
-    editQC0siteDescEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_siteDesc)
-    editQC0siteDescEntry.place(relx=0.30, rely=0.055, relwidth=0.6, relheight=0.04)
+    edit_siteDesc = tk.StringVar(editQA0Frame)
+    editQA0siteDescEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_siteDesc)
+    editQA0siteDescEntry.place(relx=0.30, rely=0.055, relwidth=0.6, relheight=0.04)
     edit_siteDesc.set(siteDesc)
 
-    editQC0LatLabel = tk.Label(editQC0Frame, text="Latitude", font=(None, 12), anchor="w")
-    editQC0LatLabel.place(relx=0.05, rely=0.105, relwidth=0.15, relheight=0.03)
+    editQA0LatLabel = tk.Label(editQA0Frame, text="Latitude", font=(None, 12), anchor="w")
+    editQA0LatLabel.place(relx=0.05, rely=0.105, relwidth=0.15, relheight=0.03)
 
-    edit_lat = tk.StringVar(editQC0Frame)
-    editQC0LatEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_lat)
-    editQC0LatEntry.place(relx=0.05, rely=0.14, relwidth=0.15, relheight=0.04)
+    edit_lat = tk.StringVar(editQA0Frame)
+    editQA0LatEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_lat)
+    editQA0LatEntry.place(relx=0.05, rely=0.14, relwidth=0.15, relheight=0.04)
     edit_lat.set(str(latitude))
 
-    editQC0LongLabel = tk.Label(editQC0Frame, text="Longitude", font=(None, 12), anchor="w")
-    editQC0LongLabel.place(relx=0.05, rely=0.19, relwidth=0.15, relheight=0.03)
+    editQA0LongLabel = tk.Label(editQA0Frame, text="Longitude", font=(None, 12), anchor="w")
+    editQA0LongLabel.place(relx=0.05, rely=0.19, relwidth=0.15, relheight=0.03)
 
-    edit_long = tk.StringVar(editQC0Frame)
-    editQC0LongEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_long)
-    editQC0LongEntry.place(relx=0.05, rely=0.225, relwidth=0.15, relheight=0.04)
+    edit_long = tk.StringVar(editQA0Frame)
+    editQA0LongEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_long)
+    editQA0LongEntry.place(relx=0.05, rely=0.225, relwidth=0.15, relheight=0.04)
     edit_long.set(str(longitude))
 
-    editQC0TZLabel = tk.Label(editQC0Frame, text="Time Zone", font=(None, 12), anchor="w")
-    editQC0TZLabel.place(relx=0.05, rely=0.275, relwidth=0.15, relheight=0.03)
+    editQA0TZLabel = tk.Label(editQA0Frame, text="Time Zone", font=(None, 12), anchor="w")
+    editQA0TZLabel.place(relx=0.05, rely=0.275, relwidth=0.15, relheight=0.03)
 
-    edit_tzone = tk.StringVar(editQC0Frame)
-    editQC0TZEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_tzone)
-    editQC0TZEntry.place(relx=0.05, rely=0.31, relwidth=0.15, relheight=0.04)
+    edit_tzone = tk.StringVar(editQA0Frame)
+    editQA0TZEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_tzone)
+    editQA0TZEntry.place(relx=0.05, rely=0.31, relwidth=0.15, relheight=0.04)
     edit_tzone.set(str(timeZone))
 
-    commentLabel = tk.Label(editQC0Frame, text="Comments", font=(None, 12), anchor="w")
+    commentLabel = tk.Label(editQA0Frame, text="Comments", font=(None, 12), anchor="w")
     commentLabel.place(relx=0.30, rely=0.105, relwidth=0.15, relheight=0.03)
 
-    commentFrame = tk.Frame(editQC0Frame, bd=1, bg="Black")
+    commentFrame = tk.Frame(editQA0Frame, bd=1, bg="Black")
     commentFrame.place(relx=0.30, rely=0.14, relwidth=0.6, relheight=0.21)
     commArea = tkst.ScrolledText(commentFrame)
     commArea.place(relx=0, rely=0, relwidth=1, relheight=1)
     commArea.insert(tk.INSERT, comments)
 
-    editQC0qcPathLabel = tk.Label(editQC0Frame, text="QC0 Path", font=(None, 12), anchor="w")
-    editQC0qcPathLabel.place(relx=0.05, rely=0.40, relwidth=0.25, relheight=0.03)
-    qc0PathLabel = tk.Label(editQC0Root, text=qc0Path, font=(None, 12), anchor="w")
-    qc0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
-    qcBrowseButton = tk.Button(editQC0Frame, text="Browse", command=editQC0Browse)
+    editQA0qcPathLabel = tk.Label(editQA0Frame, text="QA0 Path", font=(None, 12), anchor="w")
+    editQA0qcPathLabel.place(relx=0.05, rely=0.40, relwidth=0.25, relheight=0.03)
+    qa0PathLabel = tk.Label(editQA0Root, text=qa0Path, font=(None, 12), anchor="w")
+    qa0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
+    qcBrowseButton = tk.Button(editQA0Frame, text="Browse", command=editQA0Browse)
     qcBrowseButton.place(relx=0.35, rely=0.40, relwidth=0.15, relheight=0.04)
 
     # Creating defaults frame
-    defaultFrame = tk.Frame(editQC0Frame, bd=2, bg="Black")
+    defaultFrame = tk.Frame(editQA0Frame, bd=2, bg="Black")
     defaultFrame.place(relx=0.05, rely=0.55, relwidth=0.9, relheight=0.30)
     definFrame = tk.Frame(defaultFrame)
     definFrame.place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -773,23 +773,23 @@ def hitEdit():
     defLabel = tk.Label(definFrame, text="Defaults", font=(None, 16), anchor="w")
     defLabel.place(relx=0.03, rely=0.05, relwidth=0.18, relheight=0.15)
 
-    editQC0IntegVar = tk.StringVar(editQC0Frame)
-    editQC0IntegVar.set(integration)
-    editQC0IntegLabel = tk.Label(definFrame, text="Integration", font=(None, 12), anchor="w")
-    editQC0IntegLabel.place(relx=0.30, rely=0.05, relwidth=0.18, relheight=0.1)
+    editQA0IntegVar = tk.StringVar(editQA0Frame)
+    editQA0IntegVar.set(integration)
+    editQA0IntegLabel = tk.Label(definFrame, text="Integration", font=(None, 12), anchor="w")
+    editQA0IntegLabel.place(relx=0.30, rely=0.05, relwidth=0.18, relheight=0.1)
     integList = [1, 5, 15, 60]
-    editQC0integOpt = tk.OptionMenu(definFrame, editQC0IntegVar, *integList)
-    editQC0integOpt.place(relx=0.295, rely=0.21, relwidth=0.15, relheight=0.15)
+    editQA0integOpt = tk.OptionMenu(definFrame, editQA0IntegVar, *integList)
+    editQA0integOpt.place(relx=0.295, rely=0.21, relwidth=0.15, relheight=0.15)
 
-    editQC0PlaneLabel = tk.Label(definFrame, text="Plane", font=(None, 12))
-    editQC0PlaneLabel.place(relx=0.50, rely=0.05, relwidth=0.18, relheight=0.1)
+    editQA0PlaneLabel = tk.Label(definFrame, text="Plane", font=(None, 12))
+    editQA0PlaneLabel.place(relx=0.50, rely=0.05, relwidth=0.18, relheight=0.1)
 
-    editQC0planeVar = tk.IntVar(editQC0Frame)
-    rb1 = tk.Radiobutton(definFrame, text="Kt-Kn", font=(None, 12), variable=editQC0planeVar, value=1)
+    editQA0planeVar = tk.IntVar(editQA0Frame)
+    rb1 = tk.Radiobutton(definFrame, text="Kt-Kn", font=(None, 12), variable=editQA0planeVar, value=1)
     rb1.place(relx=0.5, rely=0.21, relwidth=0.18, relheight=0.12)
-    rb2 = tk.Radiobutton(definFrame, text="Kt-Kd", font=(None, 12), variable=editQC0planeVar, value=2)
+    rb2 = tk.Radiobutton(definFrame, text="Kt-Kd", font=(None, 12), variable=editQA0planeVar, value=2)
     rb2.place(relx=0.5, rely=0.34, relwidth=0.18, relheight=0.12)
-    rb3 = tk.Radiobutton(definFrame, text="Kn-Kd", font=(None, 12), variable=editQC0planeVar, value=3)
+    rb3 = tk.Radiobutton(definFrame, text="Kn-Kd", font=(None, 12), variable=editQA0planeVar, value=3)
     rb3.place(relx=0.5, rely=0.47, relwidth=0.18, relheight=0.12)
     if plane == "0 Kt-Kn":
         rb1.select()
@@ -800,38 +800,38 @@ def hitEdit():
     else:
         rb1.select()
 
-    editQC03compLabel = tk.Label(definFrame, text="3-component Filter", font=(None, 12))
-    editQC03compLabel.place(relx=0.70, rely=0.05, relwidth=0.28, relheight=0.1)
+    editQA03compLabel = tk.Label(definFrame, text="3-component Filter", font=(None, 12))
+    editQA03compLabel.place(relx=0.70, rely=0.05, relwidth=0.28, relheight=0.1)
 
-    editQC0ThreshVar = tk.StringVar(editQC0Frame)
-    editQC0ThreshVar.set(str(threshold))
-    editQC0ThreshOption = tk.OptionMenu(definFrame, editQC0ThreshVar, *threshList)
-    editQC0ThreshOption.place(relx=0.685, rely=0.21, relwidth=0.14, relheight=0.16)
-    # editQC0ThreshOption.configure(state=tk.DISABLED)
-    editQC0ThreshLabel = tk.Label(definFrame, text="Threshhold", font=(None, 12))
-    editQC0ThreshLabel.place(relx=0.84, rely=0.21, relwidth=0.136, relheight=0.14)
+    editQA0ThreshVar = tk.StringVar(editQA0Frame)
+    editQA0ThreshVar.set(str(threshold))
+    editQA0ThreshOption = tk.OptionMenu(definFrame, editQA0ThreshVar, *threshList)
+    editQA0ThreshOption.place(relx=0.685, rely=0.21, relwidth=0.14, relheight=0.16)
+    # editQA0ThreshOption.configure(state=tk.DISABLED)
+    editQA0ThreshLabel = tk.Label(definFrame, text="Threshhold", font=(None, 12))
+    editQA0ThreshLabel.place(relx=0.84, rely=0.21, relwidth=0.136, relheight=0.14)
 
     dataFolderLabel = tk.Label(definFrame, text="Data Folder", anchor="w")
     dataFolderLabel.place(relx=0.03, rely=0.655, relwidth=0.25, relheight=0.12)
     dfPathLabel = tk.Label(definFrame, text=defFolder, font=(None, 12), anchor="w")
     dfPathLabel.place(relx=0.14, rely=0.82, relwidth=0.85, relheight=0.12)
-    qcBrowseButton = tk.Button(definFrame, text="Browse", command=editQC0DatafolBrowse)
+    qcBrowseButton = tk.Button(definFrame, text="Browse", command=editQA0DatafolBrowse)
     qcBrowseButton.place(relx=0.295, rely=0.655, relwidth=0.18, relheight=0.12)
 
-    editQC0ElevLabel = tk.Label(definFrame, text="Elevation", anchor="w")
-    editQC0ElevLabel.place(relx=0.5, rely=0.655, relwidth=0.18, relheight=0.12)
-    editQC0ElevVar = tk.StringVar(editQC0Frame)
-    editQC0ElevEntry = tk.Entry(definFrame, font=(None, 12), textvariable=editQC0ElevVar)
-    editQC0ElevEntry.place(relx=0.695, rely=0.67, relwidth=0.15, relheight=0.15)
-    editQC0ElevVar.set(str(elevation))
+    editQA0ElevLabel = tk.Label(definFrame, text="Elevation", anchor="w")
+    editQA0ElevLabel.place(relx=0.5, rely=0.655, relwidth=0.18, relheight=0.12)
+    editQA0ElevVar = tk.StringVar(editQA0Frame)
+    editQA0ElevEntry = tk.Entry(definFrame, font=(None, 12), textvariable=editQA0ElevVar)
+    editQA0ElevEntry.place(relx=0.695, rely=0.67, relwidth=0.15, relheight=0.15)
+    editQA0ElevVar.set(str(elevation))
 
-    editQC0OKButton = tk.Button(editQC0Frame, text="OK", command=partial(editQC0OK, plane))
-    editQC0OKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
-    editQC0CancelButton = tk.Button(editQC0Frame, text="Cancel", command=editQC0Cancel)
-    editQC0CancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
-    editQC0Root.iconbitmap('dataFiles/qcfit-icon.ico')
-    editQC0Root.protocol("WM_DELETE_WINDOW", editQC0Cancel)
-    editQC0Root.mainloop()
+    editQA0OKButton = tk.Button(editQA0Frame, text="OK", command=partial(editQA0OK, plane))
+    editQA0OKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
+    editQA0CancelButton = tk.Button(editQA0Frame, text="Cancel", command=editQA0Cancel)
+    editQA0CancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
+    editQA0Root.iconbitmap('dataFiles/qcfit-icon.ico')
+    editQA0Root.protocol("WM_DELETE_WINDOW", editQA0Cancel)
+    editQA0Root.mainloop()
 
 
 def plotUpdateThroughMonth(*args):
@@ -919,7 +919,7 @@ def curvefitting():
     for df in (pdLow, pdMed, pdHigh):
         df.loc[(df["residual"] > data["threshold"]), flag] = 0
 
-    # calculate max values of K space - first read from QC0 if not present then find out
+    # calculate max values of K space - first read from QA0 if not present then find out
 
     knMax = boundary[boundary["month"] == data["month"][:3].upper()]
     knMax = int(list(knMax["MC_KN"])[0])
@@ -3435,12 +3435,12 @@ def save(month):
     if iterCount == 0:
         messagebox.showerror("Error", "Sorry, No data available to save.")
         return
-    fileQC = open(data["qc0Path"], "r")
+    fileQC = open(data["qa0Path"], "r")
     content = fileQC.read().splitlines()
     fileQC.close()
     # fileQC.flush()
 
-    # update QC0 data
+    # update QA0 data
     position = monList.index(month) + 9  # locating month
     string = content[position]
 
@@ -3562,7 +3562,7 @@ def save(month):
     string = " ".join(string)
     content[position] = string
     content = "\n".join(content)
-    fid = open(data["qc0Path"], 'w')
+    fid = open(data["qa0Path"], 'w')
 
     if data["plane"] == 1:
         plane = "0 Kt-Kn"
@@ -3716,7 +3716,7 @@ menuBar = tk.Menu(mainRoot)
 file = tk.Menu(menuBar, tearoff=0)
 file.add_command(label="Open", command=hitOpen)
 file.add_separator()
-file.add_command(label="Edit QC0", command=hitEdit)
+file.add_command(label="Edit QA0", command=hitEdit)
 file.add_separator()
 file.add_command(label="Save", command=callSave)
 file.add_command(label="Save BMP Image", command=saveBmp)
@@ -3735,7 +3735,7 @@ mainRoot.config(menu=menuBar)
 # Variables and lists
 #
 ####################################################
-data = {'qc0Path': '', 'defaultDataFolder': '', 'siteCode': '', 'siteDesc': '', 'siteIdentifier': '', 'latitude': 0.0,
+data = {'qa0Path': '', 'defaultDataFolder': '', 'siteCode': '', 'siteDesc': '', 'siteIdentifier': '', 'latitude': 0.0,
         'longitude': 0.0, 'timeZone': 0, 'elevation': 0.0, 'comments': '', 'integration': 1, 'plane': '',
         '3compFilter': '', 'threshold': 0.05, 'QCFDataFilepath': '', 'month': '', 'year': '', 'editWinFlag': 0,
         'listPageFlag': 0, 'flag': 'activeKtKn', 'xAxis': 'KT', 'yAxis': 'KN', 'x1': 0, 'x2': 0, 'y1': 0, 'y2': 0,
