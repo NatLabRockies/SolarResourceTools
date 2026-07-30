@@ -1,7 +1,8 @@
   Site Identifier:
  --- Latitude:
- -- Longitude:
- -- Time Zone:
+ --- Longitude:
+ --- Elevation:
+ --- Time Zone:
 
      ---Max Code---  ---Low Airmass----  --Medium Airmass--  ---High Airmass---
      KN ----KT-----  Left ----Right----  Left ----Right----  Left ----Right----
@@ -25,5 +26,4 @@ Integration (minutes):
 Data Folder:
 Plane:
 3-Component Filter:
-Elevation:
-comments:
+Comments:

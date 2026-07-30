@@ -157,13 +157,13 @@ def hitOpen():
                     data["siteIdentifier"] = data["siteCode"] + "," + " " + data["siteDesc"]
                     data["latitude"] = float(nsLatEntry.get())
                     data["longitude"] = float(nsLongEntry.get())
+                    data["elevation"] = float(nsElevVar.get())
                     data["timeZone"] = nsTZEntry.get()
                     data["comments"] = comments.get("1.0", tk.END)
                     data["integration"] = int(nsIntegVar.get())
                     data["plane"] = nsplaneVar.get()
                     # data["3compFilter"] = enableVar.get()
                     data["threshold"] = float(nsThreshVar.get())
-                    data["elevation"] = float(nsElevVar.get())
 
                     if nsplaneVar.get() == 1:
                         data["plane"] = 1
@@ -183,12 +183,12 @@ def hitOpen():
                     f.flush
                     rawData = rawData.replace("Site Identifier:", "Site Identifier: " + data["siteIdentifier"])
                     rawData = rawData.replace(" --- Latitude:", " --- Latitude: " + str(nsLatEntry.get()))
-                    rawData = rawData.replace(" -- Longitude:", " -- Longitude: " + str(nsLongEntry.get()))
-                    rawData = rawData.replace(" -- Time Zone:", " -- Time Zone: " + str(nsTZEntry.get()))
+                    rawData = rawData.replace(" --- Longitude:", " --- Longitude: " + str(nsLongEntry.get()))
+                    rawData = rawData.replace(" --- Elevation:", " --- Elevation: " + str(data["elevation"]))
+                    rawData = rawData.replace(" --- Time Zone:", " --- Time Zone: " + str(nsTZEntry.get()))
                     rawData = rawData.replace("Integration (minutes):",
                                               "Integration (minutes): " + str(data["integration"]))
                     rawData = rawData.replace("Data Folder:", "Data Folder: " + data["defaultDataFolder"])
-                    rawData = rawData.replace("Elevation:", "Elevation: " + str(data["elevation"]))
                     if data["plane"] == 1:
                         plane = "0 Kt-Kn"
                     else:
@@ -582,8 +582,8 @@ def updateSiteInfo(*args):
         existQA0Data = utills.readFile(siteInfo[optVar.get()])
         latitude = utills.pickValue(existQA0Data, 'Latitude:')
         longitude = utills.pickValue(existQA0Data, 'Longitude:')
-        timeZone = int(float(utills.pickValue(existQA0Data, 'Time Zone:')))
         elevation = float(utills.pickValue(existQA0Data, 'Elevation:'))
+        timeZone = int(float(utills.pickValue(existQA0Data, 'Time Zone:')))
         threshold = utills.pickValue(existQA0Data, '3-Component Filter:')
         if threshold == '':
             threshold = 1
@@ -591,8 +591,8 @@ def updateSiteInfo(*args):
             threshold = float(threshold)
         data["latitude"] = latitude
         data["longitude"] = longitude
-        data["timeZone"] = int(timeZone)
         data["elevation"] = elevation
+        data["timeZone"] = int(timeZone)
         data["integration"] = int(utills.pickValue(existQA0Data, 'Integration (minutes):'))
 
         _plane = (utills.pickValue(existQA0Data, 'Plane:'))
@@ -626,8 +626,8 @@ def hitEdit():
     siteDesc = siteinf[1]
     latitude = utills.pickValue(QA0Data, 'Latitude:')
     longitude = utills.pickValue(QA0Data, 'Longitude:')
-    timeZone = int(utills.pickValue(QA0Data, 'Time Zone:'))
     elevation = float(utills.pickValue(QA0Data, 'Elevation:'))
+    timeZone = int(utills.pickValue(QA0Data, 'Time Zone:'))
     threshold = utills.pickValue(QA0Data, '3-Component Filter:')
     if threshold == 0:
         threshold = 1
@@ -666,12 +666,12 @@ def hitEdit():
                 rawData = rawData.replace("Site Identifier:", "Site Identifier: " + str(edit_siteid.get()) + ", " + str(
                     edit_siteDesc.get()))
                 rawData = rawData.replace(" --- Latitude:", " --- Latitude: " + str(editQA0LatEntry.get()))
-                rawData = rawData.replace(" -- Longitude:", " -- Longitude: " + str(editQA0LongEntry.get()))
-                rawData = rawData.replace(" -- Time Zone:", " -- Time Zone: " + str(editQA0TZEntry.get()))
+                rawData = rawData.replace(" --- Longitude:", " --- Longitude: " + str(editQA0LongEntry.get()))
+                rawData = rawData.replace(" --- Elevation:", " --- Elevation: " + str(editQA0ElevVar.get()))
+                rawData = rawData.replace(" --- Time Zone:", " --- Time Zone: " + str(editQA0TZEntry.get()))
                 rawData = rawData.replace("Integration (minutes):",
                                           "Integration (minutes): " + str(editQA0IntegVar.get()))
                 rawData = rawData.replace("Data Folder:", "Data Folder: " + defFolder)
-                rawData = rawData.replace("Elevation:", "Elevation: " + str(editQA0ElevVar.get()))
                 if (editQA0planeVar.get() == 1):
                     plane = "0 Kt-Kn"
                 else:
