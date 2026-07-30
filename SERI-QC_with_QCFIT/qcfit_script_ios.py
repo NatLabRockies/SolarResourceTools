@@ -133,14 +133,14 @@ def hitOpen():
 
         def nsQA0Browse():
             global data, siteInfo
-            nsPath = tkinter.filedialog.askdirectory(parent=newSiteRoot)
+            nsPath = tkinter.filedialog.askdirectory(parent=newSiteRoot, initialdir=os.getcwd())
             data["qa0Path"] = nsPath + "/" + nssiteIDEntry.get() + ".qa0"
             qa0PathLabel = tk.Label(newSiteRoot, text=nsPath, font=(None, 12), anchor="w")
             qa0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
 
         def nsDatafolBrowse():
             # global data
-            dfPath = tkinter.filedialog.askdirectory(parent=newSiteRoot)
+            dfPath = tkinter.filedialog.askdirectory(parent=newSiteRoot, initialdir=os.getcwd())
             dfPathLabel = tk.Label(definFrame, text=dfPath, font=(None, 12), anchor="w")
             dfPathLabel.place(relx=0.14, rely=0.82, relwidth=0.85, relheight=0.12)
             data["defaultDataFolder"] = dfPath
@@ -644,12 +644,12 @@ def hitEdit():
 
     def editQA0Browse():
 
-        editQA0Path = tkinter.filedialog.askdirectory(parent=editQA0Root)
+        editQA0Path = tkinter.filedialog.askdirectory(parent=editQA0Root, initialdir=os.getcwd())
         qa0PathLabel.config(text=editQA0Path)
 
     def editQA0DatafolBrowse():
         # global data
-        dfPath = tkinter.filedialog.askdirectory(parent=editQA0Root)
+        dfPath = tkinter.filedialog.askdirectory(parent=editQA0Root, initialdir=os.getcwd())
         dfPathLabel.config(text=dfPath)
 
     def editQA0OK(plane):
