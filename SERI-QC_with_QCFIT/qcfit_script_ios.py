@@ -920,14 +920,7 @@ def curvefitting():
         df.loc[(df["residual"] > data["threshold"]), flag] = 0
 
     # calculate max values of K space for each airmass
-
-    # print("boundary\n", boundary)
-    # print("data month\n", data["month"][:3].upper())
-    # knMax = boundary[boundary["month"] == data["month"][:3].upper()]
-    # knMax = int(list(knMax["MC_KN"])[0])
-    # ktMax = boundary[boundary["month"] == data["month"][:3].upper()]
-    # ktMax = int(list(ktMax["MC_KT_" + str(data["integration"])])[0])
-
+    # Read corresponding columns first
     month_content = boundary[boundary["month"] == data["month"][:3].upper()] 
     amass = ["low", "med", "high"]
     amass_acro = ["LA", "MA", "HA"]
@@ -935,44 +928,31 @@ def curvefitting():
         data[am + "AM"]["knMax"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
         data[am + "AM"]["ktMax"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
 
-    # # global airmass throttles for kt and kn maximus
-    # am_thrott_kt = [0, 3, 10]
-    # am_thrott_kn = [0, 5, 15]
-    # amass = ["low", "med", "high"]
-    # for n, am in enumerate(amass):
-    #     data[am + "AM"]["knMax"] = knMax - am_thrott_kn[n]
-    #     data[am + "AM"]["ktMax"] = ktMax - am_thrott_kt[n]
+    for df, am in zip([pdLow, pdMed, pdHigh], amass):
+        # reduce maximus according to the airmass
+        knMax = data[am + "AM"]["knMax"]
+        ktMax = data[am + "AM"]["ktMax"]
+        knMax = int(knMax)
+        ktMax = int(ktMax)
 
-    # for i, df, amass in zip([0, 1, 2], [pdLow, pdMed, pdHigh], amass):
-    #     # reduce maximus according to the airmass
-    #     knMax = data[amass + "AM"]["knMax"]
-    #     ktMax = data[amass + "AM"]["ktMax"]
-    #     knMax = int(knMax)  # - int(am_thrott_kn[i])
-    #     ktMax = int(ktMax)  # - int(am_thrott_kt[i])
+        if (knMax < 1) or (ktMax < 1):
+            for k in (["KT", "KN"]):
+                df = df[df[flag] == 1]
+                tempList = list(set(df[k]))
 
-    #     if (knMax < 1) or (ktMax < 1):
-    #         for k in (["KT", "KN"]):
-    #             df = df[df[flag] == 1]
-    #             tempList = list(set(df[k]))
+                if len(tempList) > 0:
+                    tempList = [i for i in tempList if 0 < i < 100]
+                    maxVal = int(max(tempList))
+                else:
+                    maxVal = "NA"
+                if k == "KT":
+                    ktMax = maxVal
+                elif k == "KN":
+                    knMax = maxVal
 
-    #             if len(tempList) > 0:
-    #                 tempList = [i for i in tempList if 0 < i < 100]
-    #                 maxVal = int(max(tempList))
-    #             else:
-    #                 maxVal = "NA"
-    #             if k == "KT":
-    #                 ktMax = maxVal
-    #             elif k == "KN":
-    #                 knMax = maxVal
-
-    #         # now update the data dictionary
-    #         data[amass + "AM"]["ktMax"] = ktMax
-    #         data[amass + "AM"]["knMax"] = knMax
-    #         # data[amass + "AM"]["kdMax"] = kdMax
-
-    #         # now update the data dictionary
-    #         data[amass + "AM"]["ktMax"] = ktMax
-    #         data[amass + "AM"]["knMax"] = knMax
+            # now update the data dictionary
+            data[am + "AM"]["ktMax"] = ktMax
+            data[am + "AM"]["knMax"] = knMax
 
 
 def getBoundaries():
@@ -981,45 +961,28 @@ def getBoundaries():
     areaLeft = cAr.getArea("left")
     areaRight = cAr.getArea("right")
     airmasses = ["low", "med", "high"]
+    airmasses_acro = ["LA", "MA", "HA"]
     dataFrames = [pdLow, pdMed, pdHigh]
     location = [lowCanvas, medCanvas, highCanvas]
 
-    for amass, dframe, location in zip(airmasses, dataFrames, location):
+    for dim, (amass, am_acro, dframe, location) in enumerate(zip(airmasses, airmasses_acro, dataFrames, location)):
         # identifying column names in Boundary dataframe
-        if amass == "low":
-            boundShapeL = "LA_Left_S"
-            boundPosL = "LA_Left_P"
-            boundShapeR = "LA_Right_S"
-            boundPosR = "LA_Right_"
-            dim = 0
-        elif amass == "med":
-            boundShapeL = "MA_Left_S"
-            boundPosL = "MA_Left_P"
-            boundShapeR = "MA_Right_S"
-            boundPosR = "MA_Right_"
-            dim = 1
-        elif amass == "high":
-            boundShapeL = "HA_Left_S"
-            boundPosL = "HA_Left_P"
-            boundShapeR = "HA_Right_S"
-            boundPosR = "HA_Right_"
-            dim = 2
+        boundShapeL = am_acro + "_Left_S"
+        boundPosL = am_acro + "_Left_P"
+        boundShapeR = am_acro + "_Right_S"
+        boundPosR = am_acro + "_Right_P"
 
-        shapeL = boundary[boundary["month"] == data["month"][:3].upper()]
-        shapeL = list(shapeL[boundShapeL])[0]
-        posL = boundary[boundary["month"] == data["month"][:3].upper()]
-        posL = list(posL[boundPosL])[0]
-        shapeR = boundary[boundary["month"] == data["month"][:3].upper()]
-        shapeR = list(shapeR[boundShapeR])[0]
-        posR = boundary[boundary["month"] == data["month"][:3].upper()]
-        posR = list(posR[boundPosR + str(data["integration"])])[0]
+        month_content = boundary[boundary["month"] == data["month"][:3].upper()]
+        shapeL = int(list(month_content[boundShapeL])[0])
+        posL = int(list(month_content[boundPosL])[0])
+        shapeR = int(list(month_content[boundShapeR])[0])
+        posR = int(list(month_content[boundPosR])[0])
 
         # updating the data dictionary
-
-        shapeL = data[amass + "AM"]["shapeLeft"] = int(shapeL)
-        positionL = data[amass + "AM"]["posLeft"] = int(posL)
-        shapeR = data[amass + "AM"]["shapeRight"] = int(shapeR)
-        positionR = data[amass + "AM"]["posRight"] = int(posR)
+        data[amass + "AM"]["shapeLeft"] = shapeL
+        data[amass + "AM"]["posLeft"] = posL
+        data[amass + "AM"]["shapeRight"] = shapeR
+        data[amass + "AM"]["posRight"] = posR
 
         # identify flag and axes based on kspaces
         if data["plane"] == 1:
