@@ -62,10 +62,9 @@ def getBoundariesTable(data):
 
     table = pd.DataFrame({'data': data})
 
-    columns = ['month', 'MC_KN', 'MC_KT_1', 'MC_KT_5', 'MC_KT_15', 'MC_KT_60', 'LA_Left_S', 'LA_Left_P', 'LA_Right_S',
-               'LA_Right_1', 'LA_Right_5', 'LA_Right_15', 'LA_Right_60', 'MA_Left_S', 'MA_Left_P', 'MA_Right_S',
-               'MA_Right_1', 'MA_Right_5', 'MA_Right_15', 'MA_Right_60', 'HA_Left_S', 'HA_Left_P', 'HA_Right_S',
-               'HA_Right_1', 'HA_Right_5', 'HA_Right_15', 'HA_Right_60']
+    columns = ['month', 'LA_MAX_KN', 'LA_MAX_KT', 'LA_Left_S', 'LA_Left_P', 'LA_Right_S', 'LA_Right_P',
+               'MA_MAX_KN', 'MA_MAX_KT', 'MA_Left_S', 'MA_Left_P', 'MA_Right_S', 'MA_Right_P',
+               'HA_MAX_KN', 'HA_MAX_KT', 'HA_Left_S', 'HA_Left_P', 'HA_Right_S', 'HA_Right_P']
 
     table[columns] = table['data'].str.split(',', expand=True)
     table = table.iloc[:, 1:]

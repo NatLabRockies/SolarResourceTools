@@ -919,51 +919,60 @@ def curvefitting():
     for df in (pdLow, pdMed, pdHigh):
         df.loc[(df["residual"] > data["threshold"]), flag] = 0
 
-    # calculate max values of K space - first read from QA0 if not present then find out
+    # calculate max values of K space for each airmass
 
-    knMax = boundary[boundary["month"] == data["month"][:3].upper()]
-    knMax = int(list(knMax["MC_KN"])[0])
-    ktMax = boundary[boundary["month"] == data["month"][:3].upper()]
-    ktMax = int(list(ktMax["MC_KT_" + str(data["integration"])])[0])
+    # print("boundary\n", boundary)
+    # print("data month\n", data["month"][:3].upper())
+    # knMax = boundary[boundary["month"] == data["month"][:3].upper()]
+    # knMax = int(list(knMax["MC_KN"])[0])
+    # ktMax = boundary[boundary["month"] == data["month"][:3].upper()]
+    # ktMax = int(list(ktMax["MC_KT_" + str(data["integration"])])[0])
 
-    # global airmass throttles for kt and kn maximus
-    am_thrott_kt = [0, 3, 10]
-    am_thrott_kn = [0, 5, 15]
+    month_content = boundary[boundary["month"] == data["month"][:3].upper()] 
     amass = ["low", "med", "high"]
-    for n, am in enumerate(amass):
-        data[am + "AM"]["knMax"] = knMax - am_thrott_kn[n]
-        data[am + "AM"]["ktMax"] = ktMax - am_thrott_kt[n]
+    amass_acro = ["LA", "MA", "HA"]
+    for am, am_acro in zip(amass, amass_acro):
+        data[am + "AM"]["knMax"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
+        data[am + "AM"]["ktMax"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
 
-    for i, df, amass in zip([0, 1, 2], [pdLow, pdMed, pdHigh], amass):
-        # reduce maximus according to the airmass
-        knMax = data[amass + "AM"]["knMax"]
-        ktMax = data[amass + "AM"]["ktMax"]
-        knMax = int(knMax)  # - int(am_thrott_kn[i])
-        ktMax = int(ktMax)  # - int(am_thrott_kt[i])
+    # # global airmass throttles for kt and kn maximus
+    # am_thrott_kt = [0, 3, 10]
+    # am_thrott_kn = [0, 5, 15]
+    # amass = ["low", "med", "high"]
+    # for n, am in enumerate(amass):
+    #     data[am + "AM"]["knMax"] = knMax - am_thrott_kn[n]
+    #     data[am + "AM"]["ktMax"] = ktMax - am_thrott_kt[n]
 
-        if (knMax < 1) or (ktMax < 1):
-            for k in (["KT", "KN"]):
-                df = df[df[flag] == 1]
-                tempList = list(set(df[k]))
+    # for i, df, amass in zip([0, 1, 2], [pdLow, pdMed, pdHigh], amass):
+    #     # reduce maximus according to the airmass
+    #     knMax = data[amass + "AM"]["knMax"]
+    #     ktMax = data[amass + "AM"]["ktMax"]
+    #     knMax = int(knMax)  # - int(am_thrott_kn[i])
+    #     ktMax = int(ktMax)  # - int(am_thrott_kt[i])
 
-                if len(tempList) > 0:
-                    tempList = [i for i in tempList if 0 < i < 100]
-                    maxVal = int(max(tempList))
-                else:
-                    maxVal = "NA"
-                if k == "KT":
-                    ktMax = maxVal
-                elif k == "KN":
-                    knMax = maxVal
+    #     if (knMax < 1) or (ktMax < 1):
+    #         for k in (["KT", "KN"]):
+    #             df = df[df[flag] == 1]
+    #             tempList = list(set(df[k]))
 
-            # now update the data dictionary
-            data[amass + "AM"]["ktMax"] = ktMax
-            data[amass + "AM"]["knMax"] = knMax
-            # data[amass + "AM"]["kdMax"] = kdMax
+    #             if len(tempList) > 0:
+    #                 tempList = [i for i in tempList if 0 < i < 100]
+    #                 maxVal = int(max(tempList))
+    #             else:
+    #                 maxVal = "NA"
+    #             if k == "KT":
+    #                 ktMax = maxVal
+    #             elif k == "KN":
+    #                 knMax = maxVal
 
-            # now update the data dictionary
-            data[amass + "AM"]["ktMax"] = ktMax
-            data[amass + "AM"]["knMax"] = knMax
+    #         # now update the data dictionary
+    #         data[amass + "AM"]["ktMax"] = ktMax
+    #         data[amass + "AM"]["knMax"] = knMax
+    #         # data[amass + "AM"]["kdMax"] = kdMax
+
+    #         # now update the data dictionary
+    #         data[amass + "AM"]["ktMax"] = ktMax
+    #         data[amass + "AM"]["knMax"] = knMax
 
 
 def getBoundaries():
