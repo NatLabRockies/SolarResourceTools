@@ -1111,6 +1111,21 @@ def main():
     ipData.loc[(ipData['goAhead'] == 1) & (ipData['IQCDiffuse'] < 99) & (ipData['XD'] >= 0.03) & (
             ipData['XD'] > ipData['XDmax']), 'IQCDiffuse'] = 8
 
+    # Rayleigh test: only evaluate diffuse values that passed physical limit tests.
+    rayleigh_mask = (ipData['goAhead'] == 1) & (Global > 50.0) & (ipData['IQCDiffuse'] == 1)
+    cz = ipData['cos(solzen*deg2rad)']
+    rayleigh_limit = (
+        209.3 * cz
+        - 708.3 * (cz ** 2)
+        + 1128.7 * (cz ** 3)
+        - 911.2 * (cz ** 4)
+        + 287.85 * (cz ** 5)
+        - 0.046725 * cz * pressure
+        - 1.0
+    )
+    ipData.loc[rayleigh_mask & (Diffuse < rayleigh_limit), 'IQCDiffuse'] = 5
+    
+
     '''Go no further if the solar zenith angle is greater than 80 degrees. However, don't use a flag of 7 if the GLOBAL or DIFFUSE are not less than -10 W/sq m (thermocouple response effect).  Also, if the ETR is 25 W/sq m or less, a GLOBAL value of 10 W/sq m should not be considered too high.'''
 
     ipData.loc[(ipData['goAhead'] == 1) & (ipData['solzen'] > 80) & (ipData['IQCGlobal'] == 7) & (
