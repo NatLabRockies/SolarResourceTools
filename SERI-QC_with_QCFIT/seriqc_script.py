@@ -822,7 +822,7 @@ def main():
     curveLeft = utills.curveLeft
     curveRight = utills.curveRight
     Alog_4 = 1.386294361
-    XDm = (0.19, 0.22, 0.24, 0.28, 0.32)
+    XDm = (0.19, 0.22, 0.24, 0.28, 0.32, 0.25)
 
     splitDate(ipData)
     ipData = ipData.merge(boundData, left_on='month', right_on='month')
