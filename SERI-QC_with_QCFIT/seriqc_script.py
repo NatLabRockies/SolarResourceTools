@@ -759,11 +759,9 @@ def main():
     # Getting input file paths
 
     #################################
-    # path_QC0 = "/Users/rgupta2/Desktop/s_BMS.QC0"
-    # path_csv = "/Users/rgupta2/Desktop/minute edited.csv"
-
-    path_QC0 = frm.getPath("qc0")
-    # frm.validateFile(path_QC0, '.QC0', '.qc0')
+    
+    path_QA0 = frm.getPath("qa0")
+    # frm.validateFile(path_QA0, '.QA0', '.qa0')
 
     path_csv = frm.getPath("csv")
     # frm.validateFile(path_csv, '.csv', '.csv')
@@ -773,7 +771,7 @@ def main():
 
     #################################
 
-    qcData = utills.readFile(path_QC0)
+    qcData = utills.readFile(path_QA0)
 
     ipData = pd.read_csv(path_csv)
 
@@ -824,7 +822,7 @@ def main():
     curveLeft = utills.curveLeft
     curveRight = utills.curveRight
     Alog_4 = 1.386294361
-    XDm = (0.19, 0.22, 0.24, 0.28, 0.32)
+    XDm = (0.19, 0.22, 0.24, 0.28, 0.32, 0.25)
 
     splitDate(ipData)
     ipData = ipData.merge(boundData, left_on='month', right_on='month')
@@ -1019,7 +1017,7 @@ def main():
     ipData.loc[(ipData['NAM'] == 2),'AMass'] = 'MA'
     ipData.loc[(ipData['NAM'] == 3),'AMass'] = 'HA'''
 
-    '''intBin is an integer from 1 to 4, signifying the place of the digit containing the information in the S_<id>.QC0 file.  If data approximate 1-minute resolution, 1 is chosen; if the resolution approximates 64 minutes, 4 is chosen.  interval should be bounded by 1 and 60.'''
+    '''intBin is an integer from 1 to 4, signifying the place of the digit containing the information in the S_<id>.QA0 file.  If data approximate 1-minute resolution, 1 is chosen; if the resolution approximates 64 minutes, 4 is chosen.  interval should be bounded by 1 and 60.'''
 
     iRes = max(interval, 1)
     iRes = min(iRes, 60)
@@ -1034,7 +1032,7 @@ def main():
     elif intBin == 4:
         pos = '60'
 
-    '''The Gompertz curve numbers were read from the .QC0 file. "l" stands for "left" and "r" stands for "right".  
+    '''The Gompertz curve numbers were read from the .QA0 file. "l" stands for "left" and "r" stands for "right".  
     "I" represents the shape and "J" represents the position. '''
 
     ipData['Il'] = 0
@@ -1113,6 +1111,21 @@ def main():
     ipData.loc[(ipData['goAhead'] == 1) & (ipData['IQCDiffuse'] < 99) & (ipData['XD'] >= 0.03) & (
             ipData['XD'] > ipData['XDmax']), 'IQCDiffuse'] = 8
 
+    # Rayleigh test: only evaluate diffuse values that passed physical limit tests.
+    rayleigh_mask = (ipData['goAhead'] == 1) & (Global > 50.0) & (ipData['IQCDiffuse'] == 1)
+    cz = ipData['cos(solzen*deg2rad)']
+    rayleigh_limit = (
+        209.3 * cz
+        - 708.3 * (cz ** 2)
+        + 1128.7 * (cz ** 3)
+        - 911.2 * (cz ** 4)
+        + 287.85 * (cz ** 5)
+        - 0.046725 * cz * pressure
+        - 1.0
+    )
+    ipData.loc[rayleigh_mask & (Diffuse < rayleigh_limit), 'IQCDiffuse'] = 5
+    
+
     '''Go no further if the solar zenith angle is greater than 80 degrees. However, don't use a flag of 7 if the GLOBAL or DIFFUSE are not less than -10 W/sq m (thermocouple response effect).  Also, if the ETR is 25 W/sq m or less, a GLOBAL value of 10 W/sq m should not be considered too high.'''
 
     ipData.loc[(ipData['goAhead'] == 1) & (ipData['solzen'] > 80) & (ipData['IQCGlobal'] == 7) & (
@@ -1178,26 +1191,26 @@ def main():
     ipData.loc[(ipData['numpar'] == 3) & (ipData['IQC'] < 0), 'iTog'] = -1
     ipData.loc[(ipData['numpar'] == 3) & (ipData['IQC'] < 0), 'IQC'] = -ipData['IQC']
 
-    ipData['IQC0'] = 0
-    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3), 'IQC0'] = [min(i, 23) for i in ipData[
+    ipData['IQA0'] = 0
+    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3), 'IQA0'] = [min(i, 23) for i in ipData[
         (ipData['goAhead'] == 1) & (ipData['numpar'] == 3)]['IQC']]
-    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3), 'IQC0'] = 4 * ipData['IQC0'] - 1
+    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3), 'IQA0'] = 4 * ipData['IQA0'] - 1
 
-    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['iTog'] == 1), 'IQC0'] = ipData['IQC0'] - 1
+    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['iTog'] == 1), 'IQA0'] = ipData['IQA0'] - 1
 
-    # IQC1 has to take on the opposite sense (TOO HIGH/TOO LOW) from IQC0.
+    # IQC1 has to take on the opposite sense (TOO HIGH/TOO LOW) from IQA0.
 
     ipData['IQC1'] = 0
 
-    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3), 'IQC1'] = ipData['IQC0'] + ipData['iTog']
+    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3), 'IQC1'] = ipData['IQA0'] + ipData['iTog']
 
     '''The deviation (IQC) is significant enough to be flagged. IQCt3, being on the left side of the equation, gets flagged in a different direction from the other two.'''
 
-    '''ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['IQC'] >= 3), 'IQCGlo3'] = ipData['IQC0']
+    '''ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['IQC'] >= 3), 'IQCGlo3'] = ipData['IQA0']
     ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['IQC'] >= 3), 'IQCDir3'] = ipData['IQC1']
     ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['IQC'] >= 3), 'IQCDif3'] = ipData['IQC1']'''
 
-    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['IQC'] >= 3), 'IQCGlobal'] = ipData['IQC0']
+    ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['IQC'] >= 3), 'IQCGlobal'] = ipData['IQA0']
     ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['IQC'] >= 3), 'IQCDirect'] = ipData['IQC1']
     ipData.loc[(ipData['goAhead'] == 1) & (ipData['numpar'] == 3) & (ipData['IQC'] >= 3), 'IQCDiffuse'] = ipData['IQC1']
 
