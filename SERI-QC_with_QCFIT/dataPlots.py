@@ -18,10 +18,11 @@ from matplotlib import ticker
 
 def plot_graphs(data, flag='IQCGlobal', repfreq=1):
     # Data preparation / creating column for graph
+    # Copy after filtering to avoid chained-assignment warnings.
+    data = data.loc[data["ETR"] > 0].copy()
     Global = data[data.columns[2]].map(float)
     Direct = data[data.columns[3]].map(float)
     Diffuse = data[data.columns[4]].map(float)
-    data = data[data["ETR"] > 0]
     data['dateOnly'] = data.date.dt.date
     data['timeOnly'] = data.date.dt.strftime('%H:%M')
     data['qc_flag'] = data[flag]
@@ -175,53 +176,53 @@ def get_flg_score(data):
     qc_flags = ['IQCGlobal', 'IQCDirect', 'IQCDiffuse']
     for i in range(3):
         j = 0
-        stats_d.loc[j][i] = len(data[(data[qc_flags[i]] == 99) & data['solzen'] != 0])  # missing
+        stats_d.iloc[j, i] = len(data[(data[qc_flags[i]] == 99) & data['solzen'] != 0])  # missing
 
-        stats_d.loc[j + 1][i] = len(data[(data[qc_flags[i]] != 99) & data['solzen'] != 0])  # present
+        stats_d.iloc[j + 1, i] = len(data[(data[qc_flags[i]] != 99) & data['solzen'] != 0])  # present
 
-        stats_d.loc[j + 2][i] = len(data[(data[qc_flags[i]] != 99) & (data[qc_flags[i]] != 7) & (
+        stats_d.iloc[j + 2, i] = len(data[(data[qc_flags[i]] != 99) & (data[qc_flags[i]] != 7) & (
                 data[qc_flags[i]] != 8) & (data[qc_flags[i]] != 9) & (data['solzen'] != 0) & (
                                                  data[qc_flags[i]] <= threshold1)])  # threshold 5%
 
-        stats_d.loc[j + 3][i] = len(data[(data[qc_flags[i]] != 99) & (data[qc_flags[i]] != 7) & (
+        stats_d.iloc[j + 3, i] = len(data[(data[qc_flags[i]] != 99) & (data[qc_flags[i]] != 7) & (
                 data[qc_flags[i]] != 8) & (data[qc_flags[i]] != 9) & (data['solzen'] != 0) & (
                                                  data[qc_flags[i]] > threshold2)])  # threshold 10%
 
-        stats_d.loc[j + 4][i] = len(data[(data[qc_flags[i]] == 7) & (data['solzen'] != 0)])  # below empirical
+        stats_d.iloc[j + 4, i] = len(data[(data[qc_flags[i]] == 7) & (data['solzen'] != 0)])  # below empirical
 
-        stats_d.loc[j + 5][i] = len(data[(data[qc_flags[i]] == 8) & (data['solzen'] != 0)])  # above empirical
+        stats_d.iloc[j + 5, i] = len(data[(data[qc_flags[i]] == 8) & (data['solzen'] != 0)])  # above empirical
 
-        stats_d.loc[j + 6][i] = len(data[(data[qc_flags[i]] == 9) & (data['solzen'] != 0)])  # strange
+        stats_d.iloc[j + 6, i] = len(data[(data[qc_flags[i]] == 9) & (data['solzen'] != 0)])  # strange
 
     for i in range(3):
         j = 0
-        stats_n.loc[j][i] = len(data[(data[qc_flags[i]] == 99) & (data['solzen'] == 0)])  # missing
+        stats_n.iloc[j, i] = len(data[(data[qc_flags[i]] == 99) & (data['solzen'] == 0)])  # missing
 
-        stats_n.loc[j + 1][i] = len(data[(data[qc_flags[i]] != 99) & (data['solzen'] == 0)])  # present
+        stats_n.iloc[j + 1, i] = len(data[(data[qc_flags[i]] != 99) & (data['solzen'] == 0)])  # present
 
-        stats_n.loc[j + 2][i] = len(data[(data[qc_flags[i]] != 99) & (data[qc_flags[i]] != 7) & (
+        stats_n.iloc[j + 2, i] = len(data[(data[qc_flags[i]] != 99) & (data[qc_flags[i]] != 7) & (
                 data[qc_flags[i]] != 8) & (data[qc_flags[i]] != 9) & (data['solzen'] == 0) & (
                                                  data[qc_flags[i]] <= threshold1)])  # threshold 5%
 
-        stats_n.loc[j + 3][i] = len(data[(data[qc_flags[i]] != 99) & (data[qc_flags[i]] != 7) & (
+        stats_n.iloc[j + 3, i] = len(data[(data[qc_flags[i]] != 99) & (data[qc_flags[i]] != 7) & (
                 data[qc_flags[i]] != 8) & (data[qc_flags[i]] != 9) & (data['solzen'] == 0) & (
                                                  data[qc_flags[i]] > threshold2)])  # threshold 10%
 
-        stats_n.loc[j + 4][i] = len(data[(data[qc_flags[i]] == 7) & (data['solzen'] == 0)])  # below empirical
+        stats_n.iloc[j + 4, i] = len(data[(data[qc_flags[i]] == 7) & (data['solzen'] == 0)])  # below empirical
 
-        stats_n.loc[j + 5][i] = len(data[(data[qc_flags[i]] == 8) & (data['solzen'] == 0)])  # above empirical
+        stats_n.iloc[j + 5, i] = len(data[(data[qc_flags[i]] == 8) & (data['solzen'] == 0)])  # above empirical
 
-        stats_n.loc[j + 6][i] = len(data[(data[qc_flags[i]] == 9) & (data['solzen'] == 0)])  # strange
+        stats_n.iloc[j + 6, i] = len(data[(data[qc_flags[i]] == 9) & (data['solzen'] == 0)])  # strange
 
     stats_d = stats_d
     stats_n = stats_n
     for i in range(3):
         stats_d.loc[(stats_d[stats_d.columns[i]] != 0), stats_d.columns[i]] = (stats_d[
                                                                                    stats_d.columns[i]] /
-                                                                               stats_d.loc[1][i]) * 100
+                                           stats_d.iloc[1, i]) * 100
         stats_n.loc[(stats_d[stats_n.columns[i]] != 0), stats_n.columns[i]] = (stats_n[
                                                                                    stats_n.columns[i]] /
-                                                                               stats_n.loc[1][i]) * 100
+                                           stats_n.iloc[1, i]) * 100
     stats_d = stats_d.round(2)
     stats_n = stats_n.round(2)
 

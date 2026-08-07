@@ -31,20 +31,40 @@ def thankYou():
 
 def getPath(format):
     root = tk.Tk()
-    root.withdraw()
+    root.title("Select Input File")
+    root.resizable(False, False)
+
+    # Keep a small visible host window centered so macOS places the file dialog correctly.
+    root.update_idletasks()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    dialog_width = 360
+    dialog_height = 120
+    center_x = int((screen_width - dialog_width) / 2)
+    center_y = int((screen_height - dialog_height) / 2)
+    root.geometry(f"{dialog_width}x{dialog_height}+{center_x}+{center_y}")
+    tk.Label(root, text="Opening file browser...", padx=20, pady=20).pack()
+
+    # Bring host to the front before opening the native dialog.
+    root.lift()
+    root.attributes('-topmost', True)
     root.update()
+    root.attributes('-topmost', False)
+
+    path = ""
     if format == "qc0":
-        path = tkinter.filedialog.askopenfilename(parent=root, initialdir="/", title='Upload QC0 file',
+        path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload QC0 file',
                                                   filetypes=(("QC0 files", "*.QC0"), ("all files", "*.*")))
     if format == "csv":
-        path = tkinter.filedialog.askopenfilename(parent=root, initialdir="/", title='Upload CSV file',
+        path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload CSV file',
                                                   filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
+
+    root.destroy()
 
     if len(path) < 1:
         messagebox.showerror("Error", "File not provided. Please Try Again.")
-        root.after(3, root.destroy())
         sys.exit()
-    root.after(1, root.destroy())
+
     return path
 
 
