@@ -49,16 +49,16 @@ def plot_graphs(data, flag='IQCGlobal', repfreq=1):
     data.loc[(data[flag] == 99), 'gKd'] = 1
 
     # Creating matrix and sorting.
-    matrix1 = data.pivot("dateOnly", "timeOnly", "qc_flag")
+    matrix1 = data.pivot(index="dateOnly", columns="timeOnly", values="qc_flag")
     matrix1 = matrix1.reindex(sorted(matrix1.columns), axis=1)
 
-    matrix2 = data.pivot("dateOnly", "timeOnly", "gKt")
+    matrix2 = data.pivot(index="dateOnly", columns="timeOnly", values="gKt")
     matrix2 = matrix2.reindex(sorted(matrix2.columns), axis=1)
 
-    matrix3 = data.pivot("dateOnly", "timeOnly", "gKn")
+    matrix3 = data.pivot(index="dateOnly", columns="timeOnly", values="gKn")
     matrix3 = matrix3.reindex(sorted(matrix3.columns), axis=1)
 
-    matrix4 = data.pivot("dateOnly", "timeOnly", "gKd")
+    matrix4 = data.pivot(index="dateOnly", columns="timeOnly", values="gKd")
     matrix4 = matrix4.reindex(sorted(matrix4.columns), axis=1)
 
     # Time based operations for X axis customizations
