@@ -91,6 +91,7 @@ def plot_graphs(data, flag='IQCGlobal', repfreq=1):
     # Operations for Y axis
     # yAxis = [""] * matrix1.index
     indexVals = [""] * len(matrix1.index)
+    gap = 1
     if len(matrix1.index) < 48:
         pass
     else:
@@ -150,7 +151,7 @@ def plot_graphs(data, flag='IQCGlobal', repfreq=1):
     g3.set_xlabel("Time in hours", fontdict=font_axis)
 
     # Setting titles of sub plots
-    ax.set_title(flag[3:], fontdict=font_title)
+    ax.set_title("SERI QC Flag", fontdict=font_title)
     ax1.set_title("Kt", fontdict=font_title)
     ax2.set_title("Kn", fontdict=font_title)
     ax3.set_title("Kd", fontdict=font_title)
@@ -365,10 +366,12 @@ def write_report(data, lat, long, timezone, resolution, site_name="BMS, NREL's S
 <br/><br/><br/><br/><br/><br/><br/><br/><br/></br>
 
 
-<div> *Flag statistics indicate percent or present data. 
-                                <span style="float: right">*Developed by the National Renewable Energy Laboratory.</span>  </body> </div>
+<div> <span style="float: right">*Flag statistics indicate percent or present data. <br/>
+      *Developed by the National Renewable Energy Laboratory.</span>  
+</div>
 
-               </html>   """
+</body>
+</html>   """
 
     f.write(message)
     f.close()
