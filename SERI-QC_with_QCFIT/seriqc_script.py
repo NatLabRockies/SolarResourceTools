@@ -554,7 +554,7 @@ def SQC_2C(KTvar, KNvar, qcFlag1, qcFlag2, data, curveLeft, curveRight):
     # ------------------------ Calculations Done ------------------------
 
 
-def splitDate(ipData):
+def splitDate(ipData, timeZone):
     '''tem=re.findall('HOUR', ipData.columns[1])
            if (len(tem)!=0):  # it means data is hour based
                ipData['date'] = ipData[ipData.columns[0]] + ' ' + ipData[ipData.columns[1]].map(str)+":00:00" # provide raw data
@@ -564,25 +564,16 @@ def splitDate(ipData):
 
     # deg2rad = math.pi / 180
 
-    # to be used on prod
-    ipData['date'] = ipData[ipData.columns[0]].map(str) + ' ' + ipData[ipData.columns[1]]  # provide raw data
-
-    ipData['date'] = pd.to_datetime(ipData['date'])
+    # Input timestamps are UTC; retain them for SPA and use local time elsewhere.
+    source_timestamp = ipData[ipData.columns[0]].map(str) + ' ' + ipData[ipData.columns[1]]
+    ipData['date-UTC'] = pd.to_datetime(source_timestamp)
+    ipData['date'] = ipData['date-UTC'] + pd.to_timedelta(timeZone, unit='h')
     ipData['month'] = ipData['date'].dt.month_name().str.upper().str[0:3]
     ipData['doy'] = ipData['date'].dt.dayofyear
 
 
 def utcCoversion(ipData, timeZone, repFreq, measFreq):
-    # UTC conversion for SPA
-
-    if (timeZone < 0):
-        ipData['date-UTC'] = ipData['date'] + datetime.timedelta(hours=abs(timeZone))
-    else:
-        if (timeZone > 0):
-            ipData['date-UTC'] = ipData['date'] - datetime.timedelta(hours=abs(timeZone))
-        else:
-            ipData['date-UTC'] = ipData['date']
-
+    # date-UTC was preserved from the source timestamp in splitDate.
     ipData['f0'] = ipData['date-UTC']
     for i in range(int(repFreq / measFreq)):
         ipData['f' + str(i + 1)] = ipData['f' + str(i)] - datetime.timedelta(minutes=measFreq)
@@ -826,7 +817,11 @@ def main():
     Alog_4 = 1.386294361
     XDm = (0.19, 0.22, 0.24, 0.28, 0.32)
 
-    splitDate(ipData)
+    print("timeZone: ", timeZone)
+    print("latitude: ", latitude)
+    print("longitude: ", longitude)
+
+    splitDate(ipData, timeZone)
     ipData = ipData.merge(boundData, left_on='month', right_on='month')
     utcCoversion(ipData, timeZone, repFreq, measFreq)
     calculateZenith(ipData, repFreq, measFreq, avg, latitude, longitude, elevation, pressure, temperature)
