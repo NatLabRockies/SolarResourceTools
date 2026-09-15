@@ -450,7 +450,7 @@ def hitOpen():
             pressure = statistics.mean(ip[pressure])
 
         temperature = 12
-        script.splitDate(ip)
+        script.splitDate(ip, int(data["timeZone"]))
         script.utcCoversion(ip, int((data["timeZone"])), repFreq, measFreq)
         script.calculateZenith(ip, repFreq, measFreq, avg, data["latitude"], data["longitude"],
                                data["elevation"], pressure, temperature)
