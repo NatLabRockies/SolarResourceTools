@@ -450,7 +450,7 @@ def hitOpen():
             pressure = statistics.mean(ip[pressure])
 
         temperature = 12
-        script.splitDate(ip)
+        script.splitDate(ip, int(data["timeZone"]))
         script.utcCoversion(ip, int((data["timeZone"])), repFreq, measFreq)
         script.calculateZenith(ip, repFreq, measFreq, avg, data["latitude"], data["longitude"],
                                data["elevation"], pressure, temperature)
@@ -2474,9 +2474,9 @@ def graphConfig(amass, dframe):
         boundCanvas.place(relx=0.005, rely=0.01, relwidth=0.987, relheight=0.98)
 
         # list for option menus
-        curveL = [1, 2, 3, 4, 5, 6]
-        curveR = [1, 2, 3, 4, 5]
-        posit = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        curveL = np.arange(1, 9)        # [1, 2, 3, 4, 5, 6, 7, 8]
+        curveR = np.arange(1, 8)        # [1, 2, 3, 4, 5, 6, 7]
+        posit = np.arange(1, 41)        # [1, ..., 40]
 
         cLabel = tk.Label(boundCanvas, text="Curve", font=(None, 12), anchor="w")
         cLabel.place(relx=0.01, rely=0.3566, relwidth=0.32, relheight=0.2866)
