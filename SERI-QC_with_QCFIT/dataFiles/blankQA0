@@ -22,8 +22,8 @@ NOV: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
 DEC: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
 
 DEFAULT CONFIGURATION
-Integration (minutes):
-Data Folder:
-Plane:
-3-Component Filter:
-Comments:
+  Integration (minutes):
+  Data Folder:
+  Plane:
+  3-Component Filter:
+  Comments:
