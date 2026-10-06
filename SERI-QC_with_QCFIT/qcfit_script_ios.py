@@ -30,6 +30,8 @@ import curveArea as cAr
 from functools import partial
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RectangleSelector
+import re
+import math
 
 
 def getFilePath():
@@ -3406,140 +3408,46 @@ def save(month):
     fileQC = open(data["qa0Path"], "r")
     content = fileQC.read().splitlines()
     fileQC.close()
-    # fileQC.flush()
 
     # update QA0 data
-    position = monList.index(month) + 9  # locating month
+    position = monList.index(month) + 10  # locating month
     string = content[position]
 
     # find knMax and KtMax
     __kn = [data["lowAM"]["knMax"], data["medAM"]["knMax"], data["highAM"]["knMax"]]
-    __kn = [i for i in __kn if i != "NA"]
     __kt = [data["lowAM"]["ktMax"], data["medAM"]["ktMax"], data["highAM"]["ktMax"]]
-    __kt = [i for i in __kt if i != "NA"]
-
-    # identify right position index
-    if data["integration"] == 60:
-        ind = 3
-    elif data["integration"] == 15:
-        ind = 2
-    elif data["integration"] == 5:
-        ind = 1
-    elif data["integration"] == 1:
-        ind = 0
+    __kn = pd.to_numeric(pd.Series(__kn), errors="coerce").fillna(0).astype(int).tolist()
+    __kt = pd.to_numeric(pd.Series(__kt), errors="coerce").fillna(0).astype(int).tolist()
 
     # first writing Knmax and left curve shape and positions
-    string = string.split()
-    _mon = string[0]
-    _kmaxes = string[1]
-    _lam_left = string[2]
-    _lam_right = string[3]
-    _mam_left = string[4]
-    _mam_right = string[5]
-    _ham_left = string[6]
-    _ham_right = string[7]
+    _mon, _, _lam_max, _lam_left, _lam_right, _, _mam_max, _mam_left, _mam_right, _, _ham_max, _ham_left, _ham_right = re.split(r"[:,;, ]", string)
 
-    # break, update and join kspace maxes
-    _kmaxes = _kmaxes.split("-")
-
-    _kmaxes[0] = str(int(max(__kn)))
-    _kt = _kmaxes[1].split(";")
-    _kt = _kt[0].split("/")
-
-    if ind == 3:
-        _kt[ind] = str(int(float(max(__kt))))
-    else:
-        _kt[ind] = str(int(float(max(__kt))))
-    _kt = "/".join(_kt)
-    _kmaxes[1] = _kt + ";"
-    _kmaxes = "-".join(_kmaxes)
+    # replace Kn-Kt max values
+    _lam_max = f'{__kn[0]:02}-{__kt[0]:03}'
+    _mam_max = f'{__kn[1]:02}-{__kt[1]:03}'
+    _ham_max = f'{__kn[2]:02}-{__kt[2]:03}'
 
     # update left shape and position for all airmasses
+    _lam_left = f'{data["lowAM"]["shapeLeft"]}-{data["lowAM"]["posLeft"]:02}'
+    _mam_left = f'{data["medAM"]["shapeLeft"]}-{data["medAM"]["posLeft"]:02}'
+    _ham_left = f'{data["highAM"]["shapeLeft"]}-{data["highAM"]["posLeft"]:02}'
 
-    i = [_lam_left, _mam_left, _ham_left]
+    _lam_right = f'{data["lowAM"]["shapeRight"]}-{data["lowAM"]["posRight"]:02}'
+    _mam_right = f'{data["medAM"]["shapeRight"]}-{data["medAM"]["posRight"]:02}'
+    _ham_right = f'{data["highAM"]["shapeRight"]}-{data["highAM"]["posRight"]:02}'
 
-    for j in (2, 4, 6):
-        if j == 2:
-            _am = "low"
-            _lam_left = _lam_left.split("-")
-            _lam_left[0] = str(data[_am + "AM"]["shapeLeft"])
-            _lam_left[1] = str(data[_am + "AM"]["posLeft"])
-            if len(_lam_left[1]) == 1:
-                _lam_left[1] = "0" + _lam_left[1]
-            _lam_left = "-".join(_lam_left)
-        elif j == 4:
-            _am = "med"
-            _mam_left = _lam_left.split("-")
-            _mam_left[0] = str(data[_am + "AM"]["shapeLeft"])
-            _mam_left[1] = str(data[_am + "AM"]["posLeft"])
-            if len(_mam_left[1]) == 1:
-                _mam_left[1] = "0" + _mam_left[1]
-            _mam_left = "-".join(_mam_left)
-        elif j == 6:
-            i = _ham_left
-            _am = "high"
-            _ham_left = _lam_left.split("-")
-            _ham_left = _lam_left.split("-")
-            _ham_left[0] = str(data[_am + "AM"]["shapeLeft"])
-            _ham_left[1] = str(data[_am + "AM"]["posLeft"])
-            if len(_ham_left[1]) == 1:
-                _ham_left[1] = "0" + _ham_left[1]
-            _ham_left = "-".join(_ham_left)
-
-        # do the same for rest#
-
-    for j in (3, 5, 7):
-        if j == 3:
-            _am = "low"
-            _lam_right = _lam_right.split("-")
-            _lam_right[0] = str(data[_am + "AM"]["shapeRight"])
-            _pos = _lam_right[1].split("/")
-            _pos[ind] = str(data[_am + "AM"]["posRight"])
-            if len(_pos[ind]) == 1:
-                _pos[ind] = "0" + _pos[ind]
-            if ind == 3:
-                _pos[ind] = _pos[ind] + ";"
-            _pos = "/".join(_pos)
-            _lam_right[1] = _pos
-            _lam_right = "-".join(_lam_right)
-        if j == 5:
-            _am = "med"
-            _mam_right = _mam_right.split("-")
-            _mam_right[0] = str(data[_am + "AM"]["shapeRight"])
-            _pos = _mam_right[1].split("/")
-            _pos[ind] = str(data[_am + "AM"]["posRight"])
-            if len(_pos[ind]) == 1:
-                _pos[ind] = "0" + _pos[ind]
-            if ind == 3:
-                _pos[ind] = _pos[ind] + ";"
-            _pos = "/".join(_pos)
-            _mam_right[1] = _pos
-            _mam_right = "-".join(_mam_right)
-        if j == 7:
-            _am = "high"
-            _ham_right = _ham_right.split("-")
-            _ham_right[0] = str(data[_am + "AM"]["shapeRight"])
-            _pos = _ham_right[1].split("/")
-            _pos[ind] = str(data[_am + "AM"]["posRight"])
-            if len(_pos[ind]) == 1:
-                _pos[ind] = "0" + _pos[ind]
-            _pos = "/".join(_pos)
-            _ham_right[1] = _pos
-            _ham_right = "-".join(_ham_right)
-    string = [_mon, _kmaxes, _lam_left, _lam_right, _mam_left, _mam_right, _ham_left, _ham_right]
-    string = " ".join(string)
+    # flesh out the final string with all the updated values
+    string = f"{_mon}: {_lam_max} {_lam_left} {_lam_right}; {_mam_max} {_mam_left} {_mam_right}; {_ham_max} {_ham_left} {_ham_right}"
     content[position] = string
     content = "\n".join(content)
     fid = open(data["qa0Path"], 'w')
 
     if data["plane"] == 1:
         plane = "0 Kt-Kn"
-    else:
-        if data["plane"] == 2:
-            plane = "1 Kt-Kd"
-        else:
-            if data["plane"] == 3:
-                plane = "2 Kn-Kd"
+    elif data["plane"] == 2:
+        plane = "1 Kt-Kd"
+    elif data["plane"] == 3:
+        plane = "2 Kn-Kd"
 
     planeIndex = content.find("Plane")
     remain = content[planeIndex:]
@@ -3552,7 +3460,6 @@ def save(month):
     content = content.replace(compStr, "3-Component Filter: " + str(data["threshold"]))
     fid.write(content)
     fid.close()
-    # fid.flush()
 
 
 def savePng():
