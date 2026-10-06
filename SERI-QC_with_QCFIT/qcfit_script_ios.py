@@ -1392,8 +1392,7 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
         if len(xActOut) > 0:
             a.scatter(xActOut, yActOut, color='firebrick', marker=".")
 
-        a.set_xlim([0, 100])
-        a.set_ylim([0, 100])
+        a.margins(x=0.05, y=0.05)
         a.plot(line, line, color="black")
         a.tick_params(axis='x', colors='black')
         a.tick_params(axis='y', colors='black')
@@ -1537,8 +1536,7 @@ def graphConfig(amass, dframe):
         plt.tick_params(axis='x', colors='black')
         plt.tick_params(axis='y', colors='black')
         plt.yticks(rotation=90)
-        plt.xlim(0, 100)
-        plt.ylim(0, 100)
+        ax.margins(x=0.05, y=0.05)
         ax.scatter(xInact, yInact, color='gray', marker=".")
 
         if len(xActb10) > 0:
@@ -2791,8 +2789,7 @@ def plotByYear(*args):
                         thisYearX = thisYearData[xAxis]
                         thisYearY = thisYearData[yAxis]
                         a.scatter(thisYearX, thisYearY, color='cyan', marker=".")
-                    a.set_xlim([0, 100])
-                    a.set_ylim([0, 100])
+                    a.margins(x=0.05, y=0.05)
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
@@ -3329,8 +3326,7 @@ def density(*args):
                     if len(xActb51) > 0:
                         a.scatter(xActb51, yActb51, color='khaki', marker=".")
 
-                    a.set_xlim([0, 100])
-                    a.set_ylim([0, 100])
+                    a.margins(x=0.05, y=0.05)
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
