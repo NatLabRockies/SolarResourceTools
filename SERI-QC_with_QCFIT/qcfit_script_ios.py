@@ -979,6 +979,8 @@ def getBoundaries():
         posL = int(list(month_content[boundPosL])[0])
         shapeR = int(list(month_content[boundShapeR])[0])
         posR = int(list(month_content[boundPosR])[0])
+        positionL = posL
+        positionR = posR
 
         # updating the data dictionary
         data[amass + "AM"]["shapeLeft"] = shapeL
@@ -1636,7 +1638,7 @@ def graphConfig(amass, dframe):
                 countL = [xp for xp in countL if xp < int(data[amass + "AM"]["xLB"][yp])]
                 outL = outL + len(countL)
                 countR = list(dframe[dframe[y] == yp][x])
-                countR = [xp for xp in countR if x > int(data[amass + "AM"]["xRB"][yp])]
+                countR = [xp for xp in countR if xp > int(data[amass + "AM"]["xRB"][yp])]
                 outR = outR + len(countR)
                 # print("at y = ", y, "  ", "out left ", outL, "listL",
                 # list(filterData[filterData["KN"] == y][x]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
