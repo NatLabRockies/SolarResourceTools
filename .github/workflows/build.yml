@@ -3,11 +3,13 @@ name: Build QCFIT executables
 on:
   push:
     paths:
+      - ".github/workflows/build.yml"
       - "SERI-QC_with_QCFIT/**"
     tags:
       - "v*"
   pull_request:
     paths:
+      - ".github/workflows/build.yml"
       - "SERI-QC_with_QCFIT/**"
   workflow_dispatch:
 
