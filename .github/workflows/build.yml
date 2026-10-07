@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - "SERI-QC_with_QCFIT/**"
+    tags:
+      - "v*"
   pull_request:
     paths:
       - "SERI-QC_with_QCFIT/**"
@@ -22,8 +24,10 @@ jobs:
         include:
           - os: windows-latest
             artifact: QCFIT-windows
+            release_asset: SERI-QC_with_QCFIT/dist/QCFIT-windows.exe
           - os: macos-latest
             artifact: QCFIT-macos
+            release_asset: SERI-QC_with_QCFIT/dist/QCFIT-macos.zip
     defaults:
       run:
         working-directory: SERI-QC_with_QCFIT
@@ -45,20 +49,44 @@ jobs:
       - name: Build Windows application
         if: runner.os == 'Windows'
         run: >-
-          python -m PyInstaller --noconfirm --clean --windowed --onedir
-          --name QCFIT --icon dataFiles/qcfit-icon.ico
+          python -m PyInstaller --noconfirm --clean --windowed --onefile
+          --name QCFIT-windows --icon dataFiles/qcfit-icon.ico
           --add-data "dataFiles;dataFiles" qcfit_script.py
 
       - name: Build macOS application
         if: runner.os == 'macOS'
         run: >-
           python -m PyInstaller --noconfirm --clean --windowed --onedir
-          --name QCFIT --add-data "dataFiles:dataFiles" qcfit_script.py
+          --name QCFIT-macos --add-data "dataFiles:dataFiles" qcfit_script.py
 
-      - name: Upload executable artifact
+      - name: Package macOS application
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/QCFIT-macos.app dist/QCFIT-macos.zip
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: SERI-QC_with_QCFIT/dist/QCFIT*
+          path: ${{ matrix.release_asset }}
           if-no-files-found: error
           compression-level: 6
+
+  release:
+    name: Publish GitHub Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download platform builds
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-assets/*
