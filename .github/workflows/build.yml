@@ -2,6 +2,8 @@ name: Build QCFIT executables
 
 on:
   push:
+    branches:
+      - "**"
     paths:
       - ".github/workflows/build.yml"
       - "SERI-QC_with_QCFIT/**"
