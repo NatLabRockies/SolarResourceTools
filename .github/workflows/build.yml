@@ -1,4 +1,4 @@
-name: Build QCFIT executables
+name: Build QAFIT executables
 
 on:
   push:
@@ -6,13 +6,13 @@ on:
       - "**"
     paths:
       - ".github/workflows/build.yml"
-      - "SERI-QC_with_QCFIT/**"
+      - "SERI-QC_with_QAFIT/**"
     tags:
       - "v*"
   pull_request:
     paths:
       - ".github/workflows/build.yml"
-      - "SERI-QC_with_QCFIT/**"
+      - "SERI-QC_with_QAFIT/**"
   workflow_dispatch:
 
 permissions:
@@ -27,14 +27,14 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact: QCFIT-windows
-            release_asset: SERI-QC_with_QCFIT/dist/QCFIT-windows.exe
+            artifact: QAFIT-windows
+            release_asset: SERI-QC_with_QAFIT/dist/QAFIT-windows.exe
           - os: macos-latest
-            artifact: QCFIT-macos
-            release_asset: SERI-QC_with_QCFIT/dist/QCFIT-macos.zip
+            artifact: QAFIT-macos
+            release_asset: SERI-QC_with_QAFIT/dist/QAFIT-macos.zip
     defaults:
       run:
-        working-directory: SERI-QC_with_QCFIT
+        working-directory: SERI-QC_with_QAFIT
 
     steps:
       - name: Check out repository
@@ -54,18 +54,18 @@ jobs:
         if: runner.os == 'Windows'
         run: >-
           python -m PyInstaller --noconfirm --clean --windowed --onefile
-          --name QCFIT-windows --icon dataFiles/qcfit-icon.ico
-          --add-data "dataFiles;dataFiles" qcfit_script.py
+          --name QAFIT-windows --icon dataFiles/qcfit-icon.ico
+          --add-data "dataFiles;dataFiles" qafit_script.py
 
       - name: Build macOS application
         if: runner.os == 'macOS'
         run: >-
           python -m PyInstaller --noconfirm --clean --windowed --onedir
-          --name QCFIT-macos --add-data "dataFiles:dataFiles" qcfit_script.py
+          --name QAFIT-macos --add-data "dataFiles:dataFiles" qafit_script.py
 
       - name: Package macOS application
         if: runner.os == 'macOS'
-        run: ditto -c -k --sequesterRsrc --keepParent dist/QCFIT-macos.app dist/QCFIT-macos.zip
+        run: ditto -c -k --sequesterRsrc --keepParent dist/QAFIT-macos.app dist/QAFIT-macos.zip
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
