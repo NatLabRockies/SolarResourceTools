@@ -814,6 +814,10 @@ def main():
     curveRight = utills.curveRight
     XDm = (0.19, 0.22, 0.24, 0.28, 0.32, 0.18, 0.24)
 
+    print("timeZone: ", timeZone)
+    print("latitude: ", latitude)
+    print("longitude: ", longitude)
+
     splitDate(ipData, timeZone)
     ipData = ipData.merge(boundData, left_on='month', right_on='month')
     utcCoversion(ipData, timeZone, repFreq, measFreq)

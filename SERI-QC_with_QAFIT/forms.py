@@ -50,6 +50,9 @@ def getPath(format):
     root.lift()
     root.attributes('-topmost', True)
     root.update()
+    root.attributes('-topmost', False)
+
+    path = ""
     if format == "qa0":
         path = tkinter.filedialog.askopenfilename(parent=root, initialdir="/", title='Upload QA0 file',
                                                   filetypes=(("QA0 files", "*.QA0"), ("all files", "*.*")))
