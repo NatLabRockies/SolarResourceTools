@@ -3768,7 +3768,7 @@ disable(compFilterCanvas.winfo_children())
 #
 ####################################################
 densityFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-densityFrame.place(relx=0.67, rely=0.01, relwidth=0.22, relheight=0.13)
+densityFrame.place(relx=0.67, rely=0.01, relwidth=0.32, relheight=0.13)
 
 densityCanvas = tk.Canvas(densityFrame)
 densityCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -3803,12 +3803,31 @@ disable(densityCanvas.winfo_children())
 #
 ####################################################
 
-logo = ImageTk.PhotoImage(Image.open(resource_path('dataFiles/log.png')))
+logoSource = Image.open(resource_path('dataFiles/log.png'))
+logoPreview = logoSource.copy()
+logoPreview.thumbnail((130, 24), Image.Resampling.LANCZOS)
+logo = ImageTk.PhotoImage(logoPreview)
 
 logoFrame = tk.Frame(mainRoot, bd=2)
-logoFrame.place(relx=0.90, rely=0.01, relwidth=0.09, relheight=0.13)
+logoFrame.place(relx=0.86, rely=0.94, relwidth=0.13, relheight=0.05)
 labelImg = tk.Label(logoFrame, image=logo)
 labelImg.place(relx=0, rely=0, relwidth=1, relheight=1)
+logoState = {"size": None, "image": logo}
+
+
+def resizeLogo(event):
+    size = (event.width, event.height)
+    if size[0] <= 0 or size[1] <= 0 or size == logoState["size"]:
+        return
+
+    resizedImage = logoSource.copy()
+    resizedImage.thumbnail(size, Image.Resampling.LANCZOS)
+    logoState["image"] = ImageTk.PhotoImage(resizedImage)
+    logoState["size"] = size
+    labelImg.configure(image=logoState["image"])
+
+
+labelImg.bind("<Configure>", resizeLogo)
 ####################################################
 
 # Low air mass K-Space frame and controls
@@ -4113,7 +4132,7 @@ highCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 #
 ####################################################
 densityColorFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-densityColorFrame.place(relx=0.01, rely=0.94, relwidth=0.72, relheight=0.05)
+densityColorFrame.place(relx=0.01, rely=0.94, relwidth=0.64, relheight=0.05)
 densityColorCanvas = tk.Canvas(densityColorFrame)
 densityColorCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 desityLabel = tk.Label(densityColorCanvas, text="Density", font=(None, 10))
@@ -4142,12 +4161,12 @@ bin5Label.place(relx=0.77, rely=0, relwidth=0.075, relheight=1)
 #
 ####################################################
 integrationFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-integrationFrame.place(relx=0.74, rely=0.94, relwidth=0.25, relheight=0.05)
+integrationFrame.place(relx=0.66, rely=0.94, relwidth=0.19, relheight=0.05)
 integrationCanvas = tk.Canvas(integrationFrame)
 integrationCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
 integTimeLabel = tk.Label(integrationFrame, text="Integration Time (min): " + str(data["integration"]))
-integTimeLabel.place(relx=0.05, rely=0.1, relwidth=0.70, relheight=0.8)
+integTimeLabel.place(relx=0.02, rely=0.1, relwidth=0.96, relheight=0.8)
 
 disable(integrationFrame.winfo_children())
 mainRoot.protocol("WM_DELETE_WINDOW", exitProgram)
