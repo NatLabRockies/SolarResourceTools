@@ -1297,7 +1297,7 @@ def getBoundaries():
             a = f.add_subplot(111)
             a.clear()
             line = np.linspace(0, 100, 101)
-            a.set_xlim([0, 100])
+            a.set_xlim([0, 130])
             a.set_ylim([0, 100])
             a.plot(line, line, color="black")
             canvas = FigureCanvasTkAgg(f, master=location)
@@ -1399,7 +1399,6 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
         if len(xActOut) > 0:
             a.scatter(xActOut, yActOut, color='firebrick', marker=".")
 
-        a.margins(x=0.05, y=0.05)
         a.plot(line, line, color="black")
         a.tick_params(axis='x', colors='black')
         a.tick_params(axis='y', colors='black')
@@ -1411,6 +1410,8 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
 
             # plot right boundary
             a.plot(xRB, yRB, color="green")
+
+        a.set_xlim(0, 130)
 
         canvas = FigureCanvasTkAgg(f, master=location)
         canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -1543,7 +1544,6 @@ def graphConfig(amass, dframe):
         plt.tick_params(axis='x', colors='black')
         plt.tick_params(axis='y', colors='black')
         plt.yticks(rotation=90)
-        ax.margins(x=0.05, y=0.05)
         ax.scatter(xInact, yInact, color='gray', marker=".")
 
         if len(xActb10) > 0:
@@ -1566,6 +1566,8 @@ def graphConfig(amass, dframe):
             ax.scatter(xActb41, yActb41, color='goldenrod', marker=".")
         if len(xActb51) > 0:
             ax.scatter(xActb51, yActb51, color='khaki', marker=".")
+
+        ax.set_xlim(0, 130)
 
         ax.plot(line, line, color="black")  # line no 0
         ax.plot(data[amass + "AM"]["xLB"], data[amass + "AM"]["yLB"], color="green")  # line no 1
@@ -2800,10 +2802,10 @@ def plotByYear(*args):
                         thisYearX = thisYearData[xAxis]
                         thisYearY = thisYearData[yAxis]
                         a.scatter(thisYearX, thisYearY, color='cyan', marker=".")
-                    a.margins(x=0.05, y=0.05)
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
+                    a.set_xlim(0, 130)
 
             canvas = FigureCanvasTkAgg(f, master=location)
             canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -3337,10 +3339,10 @@ def density(*args):
                     if len(xActb51) > 0:
                         a.scatter(xActb51, yActb51, color='khaki', marker=".")
 
-                    a.margins(x=0.05, y=0.05)
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
+                    a.set_xlim(0, 130)
 
                     canvas = FigureCanvasTkAgg(f, master=location)
                     canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -3384,7 +3386,6 @@ def findRange(previous, lower, upper):
             string = str(lower)
         else:
             string = previous
-    print(case)
     return string
 
 
