@@ -639,8 +639,6 @@ def calculateZenith(ipData, repFreq, measFreq, avg, latitude, longitude, elevati
             fraction = 0.5
         else:
             fraction = 1.0
-        print(fraction)
-        print(i)
         ipData['tempSZA'] = SPA.apparent_zenith(np.array(ipData['f' + str(i)]), lat_lon, elev=elevation,
                                                 pressure=pressure, temperature=temperature,
                                                 atmospheric_refraction=0.5667, delta_t=64.17)

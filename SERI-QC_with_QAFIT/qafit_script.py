@@ -1685,8 +1685,12 @@ def graphConfig(amass, dframe):
             df.loc[(df["toList"] == 1) & (df[y] < data["y1"]), "toList"] = 0  # lower min bound
 
             df = df[df["toList"] == 1]
-            cols = list(df.columns[0:8])
+            cols = list(df.columns[2:7])
+            # Cols should be [Date, Time, ghi, dni, dhi, ... , KT, KN, KD] where Date and Time column is extracted from 'date' column.
             points = pd.DataFrame()
+            # 'date' column is the one with local timezone.
+            points['Date'] = df['date'].dt.date
+            points['Time'] = df['date'].dt.time
             for col in cols:
                 points[col] = df[col]
             # now add KT KN and KD
@@ -1694,16 +1698,16 @@ def graphConfig(amass, dframe):
             points["KT"] = df[x]
             points["KN"] = df[y]
             points["KD"] = df["KD"]
-            points[points.columns[0]] = points[points.columns[0]]  # .dt.date
+            # points[points.columns[0]] = points[points.columns[0]]  # .dt.date
 
-            # limit upto 4th dec places
-            # decimals = pd.Series([2, 2, 2], index=[points.columns[2], points.columns[3], points.columns[4]])
-            points[points.columns[2]] = points[points.columns[2]].astype('float').round(2)
-            points[points.columns[3]] = points[points.columns[3]].astype('float').round(2)
-            points[points.columns[4]] = points[points.columns[4]].astype('float').round(2)
-            points[points.columns[8]] = points[points.columns[8]].map(int)
-            points[points.columns[9]] = points[points.columns[9]].map(int)
-            points[points.columns[10]] = points[points.columns[10]].map(int)
+            # # limit upto 4th dec places
+            # # decimals = pd.Series([2, 2, 2], index=[points.columns[2], points.columns[3], points.columns[4]])
+            # points[points.columns[2]] = points[points.columns[2]].astype('float').round(2)
+            # points[points.columns[3]] = points[points.columns[3]].astype('float').round(2)
+            # points[points.columns[4]] = points[points.columns[4]].astype('float').round(2)
+            # points[points.columns[8]] = points[points.columns[8]].map(int)
+            # points[points.columns[9]] = points[points.columns[9]].map(int)
+            # points[points.columns[10]] = points[points.columns[10]].map(int)
 
             points.to_csv("Data_Points.csv")
             np.savetxt(r'Data_Points.txt', points.values, fmt='%s')
