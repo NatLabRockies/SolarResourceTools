@@ -1296,9 +1296,9 @@ def getBoundaries():
             f = Figure(figsize=(3, 2.5), dpi=100)
             a = f.add_subplot(111)
             a.clear()
-            line = np.linspace(0, 100, 101)
+            line = np.linspace(0, 130, 131)
             a.set_xlim([0, 130])
-            a.set_ylim([0, 100])
+            a.set_ylim([0, 130])
             a.plot(line, line, color="black")
             canvas = FigureCanvasTkAgg(f, master=location)
             canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -1387,7 +1387,7 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
         f = Figure(figsize=(3, 2.5), dpi=100)
         a = f.add_subplot(111)
         a.clear()
-        line = np.linspace(0, 100, 101)
+        line = np.linspace(0, 130, 131)
         '''x=dframe[xAxis]
         y=dframe[yAxis]
         xy=np.vstack([x,y])
@@ -1398,7 +1398,9 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
         a.scatter(xAct, yAct, color='orangered', marker=".")
         if len(xActOut) > 0:
             a.scatter(xActOut, yActOut, color='firebrick', marker=".")
-
+        
+        a.set_xlim([0, 130])
+        a.set_ylim([0, 130])
         a.plot(line, line, color="black")
         a.tick_params(axis='x', colors='black')
         a.tick_params(axis='y', colors='black')
@@ -1410,8 +1412,6 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
 
             # plot right boundary
             a.plot(xRB, yRB, color="green")
-
-        a.set_xlim(0, 130)
 
         canvas = FigureCanvasTkAgg(f, master=location)
         canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -1533,7 +1533,7 @@ def graphConfig(amass, dframe):
         elif hasattr(mngr, "window") and hasattr(mngr.window, "wm_title"):
             mngr.window.wm_title(window_title)
         style.use("ggplot")
-        line = np.linspace(0, 100, 101)
+        line = np.linspace(0, 130, 131)
 
         titleFont = {'family': 'serif', 'color': 'black', 'weight': 'heavy', 'size': 25}
         labelFont = {'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 12}
@@ -1544,6 +1544,8 @@ def graphConfig(amass, dframe):
         plt.tick_params(axis='x', colors='black')
         plt.tick_params(axis='y', colors='black')
         plt.yticks(rotation=90)
+        plt.xlim(0, 130)
+        plt.ylim(0, 130)
         ax.scatter(xInact, yInact, color='gray', marker=".")
 
         if len(xActb10) > 0:
@@ -1566,8 +1568,6 @@ def graphConfig(amass, dframe):
             ax.scatter(xActb41, yActb41, color='goldenrod', marker=".")
         if len(xActb51) > 0:
             ax.scatter(xActb51, yActb51, color='khaki', marker=".")
-
-        ax.set_xlim(0, 130)
 
         ax.plot(line, line, color="black")  # line no 0
         ax.plot(data[amass + "AM"]["xLB"], data[amass + "AM"]["yLB"], color="green")  # line no 1
@@ -1824,7 +1824,7 @@ def graphConfig(amass, dframe):
 
         def spinCalculation(currAmass, x, y):
             global data, pdLow, pdMed, pdHigh
-            line = list(np.linspace(0, 100, 101))
+            line = list(np.linspace(0, 130, 131))
 
             knChange = int(knVal.get()) - int(data[currAmass + "AM"]["knMax"])
             ktChange = int(ktVal.get()) - int(data[currAmass + "AM"]["ktMax"])
@@ -1951,7 +1951,7 @@ def graphConfig(amass, dframe):
             data[amass + 'AM']['posLeft'] = pLVar.get()
             data[amass + 'AM']['posRight'] = pRVar.get()
 
-            line = list(np.linspace(0, 100, 101))
+            line = list(np.linspace(0, 130, 131))
 
             if data[amass + "AM"]["knMax"] != 'NA':
 
@@ -2137,7 +2137,7 @@ def graphConfig(amass, dframe):
             areaRight = cAr.getArea("right")
             scoreL = 1000000
             scoreR = 1000000
-            line = np.linspace(0, 100, 101)
+            line = np.linspace(0, 130, 131)
 
             df = _df[_df[flag] == 1]
             knMax = int(knVal.get())
@@ -2792,7 +2792,7 @@ def plotByYear(*args):
                     f = Figure(figsize=(3, 2.5), dpi=100)
                     a = f.add_subplot(111)
                     a.clear()
-                    line = np.linspace(0, 100, 101)
+                    line = np.linspace(0, 130, 131)
                     a.scatter(xInact, yInact, color='gray', marker=".")
                     a.scatter(xAct, yAct, color='orangered', marker=".")
                     if len(xActOut) > 0:
@@ -2802,10 +2802,11 @@ def plotByYear(*args):
                         thisYearX = thisYearData[xAxis]
                         thisYearY = thisYearData[yAxis]
                         a.scatter(thisYearX, thisYearY, color='cyan', marker=".")
+                    a.set_xlim([0, 130])
+                    a.set_ylim([0, 130])
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
-                    a.set_xlim(0, 130)
 
             canvas = FigureCanvasTkAgg(f, master=location)
             canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -3289,7 +3290,7 @@ def density(*args):
                     f = Figure(figsize=(3, 2.5), dpi=100)
                     a = f.add_subplot(111)
                     a.clear()
-                    line = np.linspace(0, 100, 101)
+                    line = np.linspace(0, 130, 131)
                     a.scatter(xInact, yInact, color='gray', marker=".")
 
                     if len(xActb10) > 0:
@@ -3338,11 +3339,12 @@ def density(*args):
                         a.scatter(xActb41, yActb41, color='goldenrod', marker=".")
                     if len(xActb51) > 0:
                         a.scatter(xActb51, yActb51, color='khaki', marker=".")
-
+                    
+                    a.set_xlim([0, 130])
+                    a.set_ylim([0, 130])
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
-                    a.set_xlim(0, 130)
 
                     canvas = FigureCanvasTkAgg(f, master=location)
                     canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
