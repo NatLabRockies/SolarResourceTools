@@ -1580,7 +1580,7 @@ def graphConfig(amass, dframe):
     else:
         data["editWinFlag"] = 1
 
-        ktMaxSpinVal = 99
+        ktMaxSpinVal = 130
         minKt = data[amass + "AM"]["xLB"][int(data[amass + "AM"]["yLB"][-1])]
         knMaxSpinVal = 99
 
@@ -1825,7 +1825,7 @@ def graphConfig(amass, dframe):
             for amass, dframe in zip(["low", "med", "high"], [pdLow, pdMed, pdHigh]):
                 if data[amass + "AM"]["knMax"] != 'NA':
                     if 1 <= (int(data[amass + "AM"]["knMax"]) + knChange) <= 99:
-                        if 1 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 99:
+                        if 1 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 130:
 
                             data[amass + "AM"]["knMax"] = int(data[amass + "AM"]["knMax"]) + knChange
                             data[amass + "AM"]["ktMax"] = int(data[amass + "AM"]["ktMax"]) + ktChange
