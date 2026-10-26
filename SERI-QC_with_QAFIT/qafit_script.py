@@ -1516,7 +1516,7 @@ def graphConfig(amass, dframe):
         ax = f.add_subplot(111)
         ax.clear()
 
-        window_title = data["siteIdentifier"] + " " + "- " + amass.upper() + " - QCFIT"
+        window_title = data["siteIdentifier"] + " " + "- " + amass.upper() + " - QAFIT"
         mngr = plt.get_current_fig_manager()
         if hasattr(mngr, "set_window_title"):
             mngr.set_window_title(window_title)
@@ -2395,7 +2395,7 @@ def graphConfig(amass, dframe):
         ErrCanvas.place(relx=0.5, rely=0.5, relwidth=0.5, relheight=0.5)
 
         editGraph.wm_geometry("400x500+500+250")
-        editGraph.title(data["siteIdentifier"] + " " + "- " + amass.upper() + " - QCFIT")
+        editGraph.title(data["siteIdentifier"] + " " + "- " + amass.upper() + " - QAFIT")
 
         InLabel = tk.Label(StatCanvas, text="In", font=(None, 12), anchor="w")
         InLabel.place(relx=0.02, rely=0.01, relwidth=0.23, relheight=0.188)
@@ -2914,9 +2914,9 @@ def freqZoomed(event):
         ax.clear()
         mngr = plt.get_current_fig_manager()
         if hasattr(mngr, "set_window_title"):
-            mngr.set_window_title("QCFIT")
+            mngr.set_window_title("QAFIT")
         elif hasattr(mngr, "window") and hasattr(mngr.window, "wm_title"):
-            mngr.window.wm_title("QCFIT")
+            mngr.window.wm_title("QAFIT")
 
         titleFont = {'family': 'serif', 'color': 'black', 'weight': 'heavy', 'size': 25}
         labelFont = {'family': 'serif', 'color': 'red', 'weight': 'normal', 'size': 12}
@@ -3592,7 +3592,7 @@ def callSave():
 
 mainRoot = tk.Tk()
 mainRoot.wm_geometry("1000x550+500+250")
-mainRoot.title("QCFIT")
+mainRoot.title("QAFIT")
 menuBar = tk.Menu(mainRoot)
 file = tk.Menu(menuBar, tearoff=0)
 file.add_command(label="Open", command=hitOpen)
