@@ -504,6 +504,7 @@ def hitOpen():
 
             openRoot.withdraw()
 
+            mainRoot.title(data["siteIdentifier"] + " - QAFIT")
             mainRoot.deiconify()
             # update mainRoot frame
             if data["plane"] != planeVar.get():
