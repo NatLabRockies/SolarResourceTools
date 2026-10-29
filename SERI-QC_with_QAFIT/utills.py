@@ -9,6 +9,7 @@ Created on Tue May 21 13:54:11 2019
 import pandas as pd
 import numpy as np
 import os
+import re
 
 
 def readFile(name):  # pass the *.qa0 file name
@@ -52,13 +53,10 @@ def getBoundariesTable(data):
     start = data.find('JAN')
     stop = data.find('DEFAULT')
     data = data[start:stop]
-    data = data.replace(':', ',')
-    data = data.replace('-', ',')
-    data = data.replace('/', ',')
-    data = data.replace(' ', ',')
-    data = data.replace(';', ',')
-    data = data.replace(',,', ',')
-    data = data.split('\n')[0:12]
+    data = [
+        ','.join(re.split(r'[:\-/;\s]+', line.strip().rstrip(';')))
+        for line in data.splitlines() if line.strip()
+    ][:12]
 
     table = pd.DataFrame({'data': data})
 

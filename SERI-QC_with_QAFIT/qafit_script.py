@@ -3417,17 +3417,18 @@ def save(month):
     fileQC.close()
 
     # update QA0 data
-    position = monList.index(month) + 10  # locating month
-    string = content[position]
+    _mon = month[:3].upper()
+    positions = [i for i, line in enumerate(content) if line.lstrip().startswith(_mon + ":")]
+    if len(positions) != 1:
+        messagebox.showerror("Error", f"Expected one {_mon} boundary row in the QA0 file.")
+        return
+    position = positions[0]
 
     # find knMax and KtMax
     __kn = [data["lowAM"]["knMax"], data["medAM"]["knMax"], data["highAM"]["knMax"]]
     __kt = [data["lowAM"]["ktMax"], data["medAM"]["ktMax"], data["highAM"]["ktMax"]]
     __kn = pd.to_numeric(pd.Series(__kn), errors="coerce").fillna(0).astype(int).tolist()
     __kt = pd.to_numeric(pd.Series(__kt), errors="coerce").fillna(0).astype(int).tolist()
-
-    # first writing Knmax and left curve shape and positions
-    _mon, _, _lam_max, _lam_left, _lam_right, _, _mam_max, _mam_left, _mam_right, _, _ham_max, _ham_left, _ham_right = re.split(r"[:,;, ]", string)
 
     # replace Kn-Kt max values
     _lam_max = f'{__kn[0]:02}-{__kt[0]:03}'
@@ -3444,7 +3445,7 @@ def save(month):
     _ham_right = f'{data["highAM"]["shapeRight"]}-{data["highAM"]["posRight"]:02}'
 
     # flesh out the final string with all the updated values
-    string = f"{_mon}: {_lam_max} {_lam_left} {_lam_right}; {_mam_max} {_mam_left} {_mam_right}; {_ham_max} {_ham_left} {_ham_right}"
+    string = f"{_mon}: {_lam_max} {_lam_left} {_lam_right}; {_mam_max} {_mam_left} {_mam_right}; {_ham_max} {_ham_left} {_ham_right};"
     content[position] = string
     content = "\n".join(content)
     fid = open(data["qa0Path"], 'w')
