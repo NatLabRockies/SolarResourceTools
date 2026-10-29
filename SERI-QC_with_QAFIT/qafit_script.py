@@ -3831,7 +3831,7 @@ labelImg.bind("<Configure>", resizeLogo)
 ####################################################
 
 lowKspaceFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-lowKspaceFrame.place(relx=0.01, rely=0.15, relwidth=0.08, relheight=0.19)
+lowKspaceFrame.place(relx=0.01, rely=0.15, relwidth=0.10, relheight=0.19)
 lowKspaceCanvas = tk.Canvas(lowKspaceFrame)
 lowKspaceCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
@@ -3848,12 +3848,12 @@ lowErrorCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 lowY = tk.Label(lowKspaceCanvas, text="KnMax:", font=(None, 9), anchor="w")
 lowY.place(relx=0.05, rely=0.02, relwidth=0.55, relheight=0.2)
 lowYVal = tk.Label(lowKspaceCanvas, text="", font=(None, 9), anchor="w")
-lowYVal.place(relx=0.65, rely=0.02, relwidth=0.20, relheight=0.2)
+lowYVal.place(relx=0.65, rely=0.02, relwidth=0.35, relheight=0.2)
 
 lowX = tk.Label(lowKspaceCanvas, text="KtMax:", font=(None, 9), anchor="w")
 lowX.place(relx=0.05, rely=0.24, relwidth=0.5, relheight=0.2)
 lowXVal = tk.Label(lowKspaceCanvas, text="", font=(None, 9), anchor="w")
-lowXVal.place(relx=0.65, rely=0.24, relwidth=0.20, relheight=0.2)
+lowXVal.place(relx=0.65, rely=0.24, relwidth=0.35, relheight=0.2)
 
 lowLeft = tk.Label(lowKspaceCanvas, text="Left:", font=(None, 9), anchor="w")
 lowLeft.place(relx=0.05, rely=0.50, relwidth=0.38, relheight=0.2)
@@ -3917,7 +3917,7 @@ disable(lowErrorCanvas.winfo_children())
 #
 ####################################################
 medKspaceFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-medKspaceFrame.place(relx=0.34, rely=0.15, relwidth=0.08, relheight=0.19)
+medKspaceFrame.place(relx=0.34, rely=0.15, relwidth=0.10, relheight=0.19)
 medKspaceCanvas = tk.Canvas(medKspaceFrame)
 medKspaceCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
@@ -3934,12 +3934,12 @@ medErrorCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 medY = tk.Label(medKspaceCanvas, text="KnMax:", font=(None, 9), anchor="w")
 medY.place(relx=0.05, rely=0.02, relwidth=0.55, relheight=0.2)
 medYVal = tk.Label(medKspaceCanvas, text="", font=(None, 9), anchor="w")
-medYVal.place(relx=0.65, rely=0.02, relwidth=0.20, relheight=0.2)
+medYVal.place(relx=0.65, rely=0.02, relwidth=0.35, relheight=0.2)
 
 medX = tk.Label(medKspaceCanvas, text="KtMax:", font=(None, 9), anchor="w")
 medX.place(relx=0.05, rely=0.24, relwidth=0.5, relheight=0.2)
 medXVal = tk.Label(medKspaceCanvas, text="", font=(None, 9), anchor="w")
-medXVal.place(relx=0.65, rely=0.24, relwidth=0.20, relheight=0.2)
+medXVal.place(relx=0.65, rely=0.24, relwidth=0.35, relheight=0.2)
 
 medLeft = tk.Label(medKspaceCanvas, text="Left:", font=(None, 9), anchor="w")
 medLeft.place(relx=0.05, rely=0.50, relwidth=0.38, relheight=0.2)
@@ -4004,7 +4004,7 @@ disable(medErrorCanvas.winfo_children())
 #
 ####################################################
 highKspaceFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-highKspaceFrame.place(relx=0.67, rely=0.15, relwidth=0.08, relheight=0.19)
+highKspaceFrame.place(relx=0.67, rely=0.15, relwidth=0.10, relheight=0.19)
 highKspaceCanvas = tk.Canvas(highKspaceFrame)
 highKspaceCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
@@ -4021,12 +4021,12 @@ highErrorCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 highY = tk.Label(highKspaceCanvas, text="KnMax:", font=(None, 9), anchor="w")
 highY.place(relx=0.05, rely=0.02, relwidth=0.55, relheight=0.2)
 highYVal = tk.Label(highKspaceCanvas, text="", font=(None, 9), anchor="w")
-highYVal.place(relx=0.65, rely=0.02, relwidth=0.20, relheight=0.2)
+highYVal.place(relx=0.65, rely=0.02, relwidth=0.35, relheight=0.2)
 
 highX = tk.Label(highKspaceCanvas, text="KtMax:", font=(None, 9), anchor="w")
 highX.place(relx=0.05, rely=0.24, relwidth=0.5, relheight=0.2)
 highXVal = tk.Label(highKspaceCanvas, text="", font=(None, 9), anchor="w")
-highXVal.place(relx=0.65, rely=0.24, relwidth=0.20, relheight=0.2)
+highXVal.place(relx=0.65, rely=0.24, relwidth=0.35, relheight=0.2)
 
 highLeft = tk.Label(highKspaceCanvas, text="Left:", font=(None, 9), anchor="w")
 highLeft.place(relx=0.05, rely=0.50, relwidth=0.38, relheight=0.2)
