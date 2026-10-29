@@ -354,8 +354,12 @@ def hitOpen():
         global data, boundary, siteInfo
         qa0Path = getQA0FilePath()
         if len(qa0Path) > 1:
+            try:
+                existQA0Data = utills.readQA0(qa0Path)
+            except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+                messagebox.showerror("QA0 File Error", f"Cannot open {qa0Path}:\n{exc}")
+                return
             data["qa0Path"] = qa0Path
-            existQA0Data = utills.readFile(qa0Path)
             index = existQA0Data.find("Site Identifier:")
             string = existQA0Data[index + len("Site Identifier:"):]
             siteID = string.split("\n")
@@ -429,6 +433,11 @@ def hitOpen():
     def okOS():
         global ip, data, plotData, pdLow, pdMed, pdHigh, boundary, iterCount
 
+        try:
+            qa0dat = utills.readQA0(data["qa0Path"])
+        except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+            messagebox.showerror("QA0 File Error", f"Cannot open {data['qa0Path']}:\n{exc}")
+            return
         if iterCount > 0:
             iterCount = 0
             answer = messagebox.askyesno("Save Changes", "Do you want to save changes?")
@@ -437,7 +446,6 @@ def hitOpen():
                 save(monthToSave)
             resetStats()
         # read QA0 file
-        qa0dat = utills.readFile(data["qa0Path"])
         boundary = utills.getBoundariesTable(qa0dat)
         temp = boundary
         data["integration"] = int(integVar.get())
@@ -585,7 +593,11 @@ def updateSiteInfo(*args):
     if optVar.get() == "select a site":
         return
     else:
-        existQA0Data = utills.readFile(siteInfo[optVar.get()])
+        try:
+            existQA0Data = utills.readQA0(siteInfo[optVar.get()])
+        except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+            messagebox.showerror("QA0 File Error", f"Cannot open {siteInfo[optVar.get()]}:\n{exc}")
+            return
         latitude = utills.pickValue(existQA0Data, 'Latitude:')
         longitude = utills.pickValue(existQA0Data, 'Longitude:')
         elevation = float(utills.pickValue(existQA0Data, 'Elevation:'))
@@ -620,8 +632,13 @@ def hitEdit():
             save(monthToSave)
 
     qa0Path = getQA0FilePath()
-    if len(qa0Path) > 1:
-        QA0Data = utills.readFile(qa0Path)
+    if len(qa0Path) <= 1:
+        return
+    try:
+        QA0Data = utills.readQA0(qa0Path)
+    except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+        messagebox.showerror("QA0 File Error", f"Cannot open {qa0Path}:\n{exc}")
+        return
 
     index = QA0Data.find("Site Identifier:")
     string = QA0Data[index + len("Site Identifier:"):]
@@ -629,7 +646,7 @@ def hitEdit():
     siteinf = siteinf[0].split(",")
 
     siteid = siteinf[0]
-    siteDesc = siteinf[1]
+    siteDesc = ",".join(siteinf[1:])
     latitude = utills.pickValue(QA0Data, 'Latitude:')
     longitude = utills.pickValue(QA0Data, 'Longitude:')
     elevation = float(utills.pickValue(QA0Data, 'Elevation:'))
@@ -3412,9 +3429,11 @@ def save(month):
     if iterCount == 0:
         messagebox.showerror("Error", "Sorry, No data available to save.")
         return
-    fileQC = open(data["qa0Path"], "r")
-    content = fileQC.read().splitlines()
-    fileQC.close()
+    try:
+        content = utills.readQA0(data["qa0Path"]).splitlines()
+    except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+        messagebox.showerror("QA0 File Error", f"Cannot save {data['qa0Path']}:\n{exc}")
+        return
 
     # update QA0 data
     _mon = month[:3].upper()

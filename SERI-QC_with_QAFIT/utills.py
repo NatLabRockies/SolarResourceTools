@@ -10,12 +10,50 @@ import pandas as pd
 import numpy as np
 import os
 import re
+import math
+
+
+class QA0FormatError(ValueError):
+    pass
+
+
+def readQA0(name):
+    text = readFile(name)
+    for field in ('Site Identifier', 'Latitude', 'Longitude', 'Time Zone', 'Integration (minutes)'):
+        values = re.findall(r'^[ \t-]*' + re.escape(field) + r':[ \t]*(.*)$', text, re.MULTILINE)
+        if len(values) != 1 or not values[0].strip():
+            raise QA0FormatError(f"Expected one non-empty '{field}:' field.")
+        if field != 'Site Identifier':
+            try:
+                value = float(values[0])
+            except ValueError as exc:
+                raise QA0FormatError(f"'{field}:' must contain a number.") from exc
+            if not math.isfinite(value):
+                raise QA0FormatError(f"'{field}:' must contain a finite number.")
+            if field == 'Integration (minutes)' and (value <= 0 or not value.is_integer()):
+                raise QA0FormatError("'Integration (minutes):' must be a positive whole number.")
+    for field in ('Elevation', '3-Component Filter'):
+        values = re.findall(r'^[ \t-]*' + re.escape(field) + r':[ \t]*(.*)$', text, re.MULTILINE)
+        if len(values) > 1:
+            raise QA0FormatError(f"Duplicate '{field}:' field.")
+        if values and values[0].strip():
+            try:
+                value = float(values[0])
+            except ValueError as exc:
+                raise QA0FormatError(f"'{field}:' must contain a number.") from exc
+            if not math.isfinite(value):
+                raise QA0FormatError(f"'{field}:' must contain a finite number.")
+    planes = re.findall(r'^[ \t]*Plane:[ \t]*(.*)$', text, re.MULTILINE)
+    if len(planes) > 1 or (planes and planes[0].strip() and
+                          not re.fullmatch(r'[012](?:\s+K[tn]-K[nd])?', planes[0].strip())):
+        raise QA0FormatError("'Plane:' must start with 0, 1, or 2 (for example, '0 Kt-Kn').")
+    getBoundariesTable(text)
+    return text
 
 
 def readFile(name):  # pass the *.qa0 file name
-    f = (open(name, 'r'))
-    val = (f.read())
-    return val
+    with open(name, 'r') as file:
+        return file.read()
 
 
 def readList(name):  # pass the *.txt file name
@@ -50,23 +88,66 @@ def pickValue(data, Name):
 
 
 def getBoundariesTable(data):
-    start = data.find('JAN')
-    stop = data.find('DEFAULT')
-    data = data[start:stop]
-    data = [
-        ','.join(re.split(r'[:\-/;\s]+', line.strip().rstrip(';')))
-        for line in data.splitlines() if line.strip()
-    ][:12]
-
-    table = pd.DataFrame({'data': data})
-
+    months = 'JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC'.split()
+    lines = data.splitlines()
+    starts = [i for i, line in enumerate(lines) if line.lstrip().startswith('JAN:')]
+    stops = [i for i, line in enumerate(lines) if line.strip() == 'DEFAULT CONFIGURATION']
+    if len(starts) != 1 or len(stops) != 1 or starts[0] >= stops[0]:
+        raise QA0FormatError("Expected a JAN: boundary row followed by DEFAULT CONFIGURATION.")
+    rows = [(i + 1, line.strip()) for i, line in enumerate(lines)
+            if starts[0] <= i < stops[0] and line.strip()]
+    if len(rows) != 12:
+        raise QA0FormatError(f"Expected 12 monthly boundary rows (JAN through DEC); found {len(rows)}.")
+    records = []
+    for month, (line_number, line) in zip(months, rows):
+        prefix = f"Line {line_number}: invalid {month} boundary row."
+        label, separator, values = line.partition(':')
+        if not separator or label != month:
+            raise QA0FormatError(f"Line {line_number}: expected {month}:, found {label!r}.")
+        groups = values.strip().removesuffix(';').split(';')
+        if len(groups) != 3:
+            raise QA0FormatError(
+                f"{prefix} Separate the low, medium, and high air-mass sections "
+                f"with semicolons; found {len(groups)} sections instead of 3."
+            )
+        record = [month]
+        for air_mass, group in zip(('low', 'medium', 'high'), groups):
+            context = f"{prefix} {air_mass.capitalize()} air mass:"
+            pairs = group.split()
+            if len(pairs) != 3:
+                raise QA0FormatError(
+                    f"{context} expected maximum values, left curve, and right curve "
+                    f"(for example, '95-123 2-03 4-05'); found {len(pairs)} entries."
+                )
+            for pair, fields in zip(pairs, (
+                (('Kn max', 2), ('Kt max', 3)),
+                (('left curve shape', 1), ('left curve position', 2)),
+                (('right curve shape', 1), ('right curve position', 2)),
+            )):
+                parts = pair.split('-')
+                if len(parts) != 2:
+                    raise QA0FormatError(
+                        f"{context} separate {fields[0][0]} and {fields[1][0]} "
+                        f"with a hyphen; found {pair!r}."
+                    )
+                for value, (field, width) in zip(parts, fields):
+                    if not re.fullmatch(r'\d+', value):
+                        raise QA0FormatError(
+                            f"{context} {field} must be a non-negative whole number; "
+                            f"found {value!r}."
+                        )
+                    if len(value) > width:
+                        raise QA0FormatError(
+                            f"{context} {field} must have at most {width} digits; "
+                            f"found {value!r}."
+                        )
+                    record.append(value)
+        records.append(record)
     columns = ['month', 'LA_MAX_KN', 'LA_MAX_KT', 'LA_Left_S', 'LA_Left_P', 'LA_Right_S', 'LA_Right_P',
                'MA_MAX_KN', 'MA_MAX_KT', 'MA_Left_S', 'MA_Left_P', 'MA_Right_S', 'MA_Right_P',
                'HA_MAX_KN', 'HA_MAX_KT', 'HA_Left_S', 'HA_Left_P', 'HA_Right_S', 'HA_Right_P']
 
-    table[columns] = table['data'].str.split(',', expand=True)
-    table = table.iloc[:, 1:]
-    return table
+    return pd.DataFrame(records, columns=columns)
 
 
 def maxX(i, j):
