@@ -354,8 +354,12 @@ def hitOpen():
         global data, boundary, siteInfo
         qa0Path = getQA0FilePath()
         if len(qa0Path) > 1:
+            try:
+                existQA0Data = utills.readQA0(qa0Path)
+            except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+                messagebox.showerror("QA0 File Error", f"Cannot open {qa0Path}:\n{exc}")
+                return
             data["qa0Path"] = qa0Path
-            existQA0Data = utills.readFile(qa0Path)
             index = existQA0Data.find("Site Identifier:")
             string = existQA0Data[index + len("Site Identifier:"):]
             siteID = string.split("\n")
@@ -429,6 +433,11 @@ def hitOpen():
     def okOS():
         global ip, data, plotData, pdLow, pdMed, pdHigh, boundary, iterCount
 
+        try:
+            qa0dat = utills.readQA0(data["qa0Path"])
+        except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+            messagebox.showerror("QA0 File Error", f"Cannot open {data['qa0Path']}:\n{exc}")
+            return
         if iterCount > 0:
             iterCount = 0
             answer = messagebox.askyesno("Save Changes", "Do you want to save changes?")
@@ -437,7 +446,6 @@ def hitOpen():
                 save(monthToSave)
             resetStats()
         # read QA0 file
-        qa0dat = utills.readFile(data["qa0Path"])
         boundary = utills.getBoundariesTable(qa0dat)
         temp = boundary
         data["integration"] = int(integVar.get())
@@ -585,7 +593,11 @@ def updateSiteInfo(*args):
     if optVar.get() == "select a site":
         return
     else:
-        existQA0Data = utills.readFile(siteInfo[optVar.get()])
+        try:
+            existQA0Data = utills.readQA0(siteInfo[optVar.get()])
+        except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+            messagebox.showerror("QA0 File Error", f"Cannot open {siteInfo[optVar.get()]}:\n{exc}")
+            return
         latitude = utills.pickValue(existQA0Data, 'Latitude:')
         longitude = utills.pickValue(existQA0Data, 'Longitude:')
         elevation = float(utills.pickValue(existQA0Data, 'Elevation:'))
@@ -620,8 +632,13 @@ def hitEdit():
             save(monthToSave)
 
     qa0Path = getQA0FilePath()
-    if len(qa0Path) > 1:
-        QA0Data = utills.readFile(qa0Path)
+    if len(qa0Path) <= 1:
+        return
+    try:
+        QA0Data = utills.readQA0(qa0Path)
+    except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+        messagebox.showerror("QA0 File Error", f"Cannot open {qa0Path}:\n{exc}")
+        return
 
     index = QA0Data.find("Site Identifier:")
     string = QA0Data[index + len("Site Identifier:"):]
@@ -629,7 +646,7 @@ def hitEdit():
     siteinf = siteinf[0].split(",")
 
     siteid = siteinf[0]
-    siteDesc = siteinf[1]
+    siteDesc = ",".join(siteinf[1:])
     latitude = utills.pickValue(QA0Data, 'Latitude:')
     longitude = utills.pickValue(QA0Data, 'Longitude:')
     elevation = float(utills.pickValue(QA0Data, 'Elevation:'))
@@ -2482,7 +2499,7 @@ def graphConfig(amass, dframe):
         # list for option menus
         curveL = np.arange(1, 9)        # [1, 2, 3, 4, 5, 6, 7, 8]
         curveR = np.arange(1, 8)        # [1, 2, 3, 4, 5, 6, 7]
-        posit = np.arange(1, 41)        # [1, ..., 40]
+        posit = np.arange(1, 31)        # [1, ..., 30]
 
         cLabel = tk.Label(boundCanvas, text="Curve", font=(None, 12), anchor="w")
         cLabel.place(relx=0.01, rely=0.3566, relwidth=0.32, relheight=0.2866)
@@ -3412,22 +3429,25 @@ def save(month):
     if iterCount == 0:
         messagebox.showerror("Error", "Sorry, No data available to save.")
         return
-    fileQC = open(data["qa0Path"], "r")
-    content = fileQC.read().splitlines()
-    fileQC.close()
+    try:
+        content = utills.readQA0(data["qa0Path"]).splitlines()
+    except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+        messagebox.showerror("QA0 File Error", f"Cannot save {data['qa0Path']}:\n{exc}")
+        return
 
     # update QA0 data
-    position = monList.index(month) + 10  # locating month
-    string = content[position]
+    _mon = month[:3].upper()
+    positions = [i for i, line in enumerate(content) if line.lstrip().startswith(_mon + ":")]
+    if len(positions) != 1:
+        messagebox.showerror("Error", f"Expected one {_mon} boundary row in the QA0 file.")
+        return
+    position = positions[0]
 
     # find knMax and KtMax
     __kn = [data["lowAM"]["knMax"], data["medAM"]["knMax"], data["highAM"]["knMax"]]
     __kt = [data["lowAM"]["ktMax"], data["medAM"]["ktMax"], data["highAM"]["ktMax"]]
     __kn = pd.to_numeric(pd.Series(__kn), errors="coerce").fillna(0).astype(int).tolist()
     __kt = pd.to_numeric(pd.Series(__kt), errors="coerce").fillna(0).astype(int).tolist()
-
-    # first writing Knmax and left curve shape and positions
-    _mon, _, _lam_max, _lam_left, _lam_right, _, _mam_max, _mam_left, _mam_right, _, _ham_max, _ham_left, _ham_right = re.split(r"[:,;, ]", string)
 
     # replace Kn-Kt max values
     _lam_max = f'{__kn[0]:02}-{__kt[0]:03}'
@@ -3444,7 +3464,7 @@ def save(month):
     _ham_right = f'{data["highAM"]["shapeRight"]}-{data["highAM"]["posRight"]:02}'
 
     # flesh out the final string with all the updated values
-    string = f"{_mon}: {_lam_max} {_lam_left} {_lam_right}; {_mam_max} {_mam_left} {_mam_right}; {_ham_max} {_ham_left} {_ham_right}"
+    string = f"{_mon}: {_lam_max} {_lam_left} {_lam_right}; {_mam_max} {_mam_left} {_mam_right}; {_ham_max} {_ham_left} {_ham_right};"
     content[position] = string
     content = "\n".join(content)
     fid = open(data["qa0Path"], 'w')
