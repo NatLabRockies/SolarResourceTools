@@ -1296,9 +1296,9 @@ def getBoundaries():
             f = Figure(figsize=(3, 2.5), dpi=100)
             a = f.add_subplot(111)
             a.clear()
-            line = np.linspace(0, 130, 131)
+            line = np.linspace(0, 100, 101)
             a.set_xlim([-2, 130])
-            a.set_ylim([-2, 130])
+            a.set_ylim([-2, 100])
             a.plot(line, line, color="black")
             canvas = FigureCanvasTkAgg(f, master=location)
             canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -1321,7 +1321,7 @@ def getBoundaries():
 def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
     if len(dframe) > 1:
         col = dframe.columns
-        line = np.linspace(0, 130, 131)
+        line = np.linspace(0, 100, 101)
 
         if len(dframe[dframe[flag] == 1]) > 0:  # Plot boundary only if data is there
             # Plotting left boundary
@@ -1390,7 +1390,7 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
             a.scatter(xActOut, yActOut, color='firebrick', marker=".")
         
         a.set_xlim([-2, 130])
-        a.set_ylim([-2, 130])
+        a.set_ylim([-2, 100])
         a.plot(line, line, color="black")
         a.tick_params(axis='x', colors='black')
         a.tick_params(axis='y', colors='black')
@@ -1523,7 +1523,7 @@ def graphConfig(amass, dframe):
         elif hasattr(mngr, "window") and hasattr(mngr.window, "wm_title"):
             mngr.window.wm_title(window_title)
         style.use("ggplot")
-        line = np.linspace(0, 130, 131)
+        line = np.linspace(0, 100, 101)
 
         titleFont = {'family': 'serif', 'color': 'black', 'weight': 'heavy', 'size': 25}
         labelFont = {'family': 'serif', 'color': 'darkred', 'weight': 'normal', 'size': 12}
@@ -1535,7 +1535,7 @@ def graphConfig(amass, dframe):
         plt.tick_params(axis='y', colors='black')
         plt.yticks(rotation=90)
         plt.xlim(-2, 130)
-        plt.ylim(-2, 130)
+        plt.ylim(-2, 100)
         ax.scatter(xInact, yInact, color='gray', marker=".")
 
         if len(xActb10) > 0:
@@ -1814,7 +1814,7 @@ def graphConfig(amass, dframe):
 
         def spinCalculation(currAmass, x, y):
             global data, pdLow, pdMed, pdHigh
-            line = list(np.linspace(0, 130, 131))
+            line = list(np.linspace(0, 100, 101))
 
             knChange = int(knVal.get()) - int(data[currAmass + "AM"]["knMax"])
             ktChange = int(ktVal.get()) - int(data[currAmass + "AM"]["ktMax"])
@@ -1941,7 +1941,7 @@ def graphConfig(amass, dframe):
             data[amass + 'AM']['posLeft'] = pLVar.get()
             data[amass + 'AM']['posRight'] = pRVar.get()
 
-            line = list(np.linspace(0, 130, 131))
+            line = list(np.linspace(0, 100, 101))
 
             if data[amass + "AM"]["knMax"] != 'NA':
 
@@ -2127,7 +2127,7 @@ def graphConfig(amass, dframe):
             areaRight = cAr.getArea("right")
             scoreL = 1000000
             scoreR = 1000000
-            line = np.linspace(0, 130, 131)
+            line = np.linspace(0, 100, 101)
 
             df = _df[_df[flag] == 1]
             knMax = int(knVal.get())
@@ -2786,7 +2786,7 @@ def plotByYear(*args):
                     f = Figure(figsize=(3, 2.5), dpi=100)
                     a = f.add_subplot(111)
                     a.clear()
-                    line = np.linspace(0, 130, 131)
+                    line = np.linspace(0, 100, 101)
                     a.scatter(xInact, yInact, color='gray', marker=".")
                     a.scatter(xAct, yAct, color='orangered', marker=".")
                     if len(xActOut) > 0:
@@ -2797,7 +2797,7 @@ def plotByYear(*args):
                         thisYearY = thisYearData[yAxis]
                         a.scatter(thisYearX, thisYearY, color='cyan', marker=".")
                     a.set_xlim([-2, 130])
-                    a.set_ylim([-2, 130])
+                    a.set_ylim([-2, 100])
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
@@ -3284,7 +3284,7 @@ def density(*args):
                     f = Figure(figsize=(3, 2.5), dpi=100)
                     a = f.add_subplot(111)
                     a.clear()
-                    line = np.linspace(0, 130, 131)
+                    line = np.linspace(0, 100, 101)
                     a.scatter(xInact, yInact, color='gray', marker=".")
 
                     if len(xActb10) > 0:
@@ -3335,7 +3335,7 @@ def density(*args):
                         a.scatter(xActb51, yActb51, color='khaki', marker=".")
                     
                     a.set_xlim([-2, 130])
-                    a.set_ylim([-2, 130])
+                    a.set_ylim([-2, 100])
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
