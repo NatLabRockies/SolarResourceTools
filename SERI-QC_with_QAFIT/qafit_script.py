@@ -2482,7 +2482,7 @@ def graphConfig(amass, dframe):
         # list for option menus
         curveL = np.arange(1, 9)        # [1, 2, 3, 4, 5, 6, 7, 8]
         curveR = np.arange(1, 8)        # [1, 2, 3, 4, 5, 6, 7]
-        posit = np.arange(1, 41)        # [1, ..., 40]
+        posit = np.arange(1, 31)        # [1, ..., 30]
 
         cLabel = tk.Label(boundCanvas, text="Curve", font=(None, 12), anchor="w")
         cLabel.place(relx=0.01, rely=0.3566, relwidth=0.32, relheight=0.2866)
