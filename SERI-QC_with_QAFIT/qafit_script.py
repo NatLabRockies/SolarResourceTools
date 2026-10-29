@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 Created on 10/23/19 12:03 PM
-
 @author : rahul gupta (rgupta2)
+
+Modified on 10/7/26 04:24 PM
+@author : Sora Ryu (sora-ryu)
 
 """
 # Imports
@@ -18,6 +20,7 @@ from tkinter import messagebox
 import tkinter.scrolledtext as tkst
 import pandas as pd
 import numpy as np
+from app_paths import resource_path
 import utills
 import utills as ut
 import seriqc_script as script
@@ -30,6 +33,8 @@ import curveArea as cAr
 from functools import partial
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RectangleSelector
+import re
+import math
 
 
 def getFilePath():
@@ -51,7 +56,7 @@ def getFilePath():
     return path
 
 
-def getQC0FilePath():
+def getQA0FilePath():
     root = tk.Tk()
     root.withdraw()
 
@@ -64,8 +69,8 @@ def getQC0FilePath():
     center_y = int((screen_height - dialog_height) / 2)
     root.geometry(f"{dialog_width}x{dialog_height}+{center_x}+{center_y}")
 
-    path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload QC0 file',
-                                              filetypes=(("QC0 files", "*.QC0"), ("all files", "*.*")))
+    path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload QA0 file',
+                                              filetypes=(("QA0 files", "*.QA0"), ("all files", "*.*")))
     return path
 
 
@@ -131,16 +136,16 @@ def getKspace(ip):
 def hitOpen():
     def newSite():
 
-        def nsQC0Browse():
+        def nsQA0Browse():
             global data, siteInfo
-            nsPath = tkinter.filedialog.askdirectory(parent=newSiteRoot)
-            data["qc0Path"] = nsPath + "/" + nssiteIDEntry.get() + ".qc0"
-            qc0PathLabel = tk.Label(newSiteRoot, text=nsPath, font=(None, 12), anchor="w")
-            qc0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
+            nsPath = tkinter.filedialog.askdirectory(parent=newSiteRoot, initialdir=os.getcwd())
+            data["qa0Path"] = nsPath + "/" + nssiteIDEntry.get() + ".qa0"
+            qa0PathLabel = tk.Label(newSiteRoot, text=nsPath, font=(None, 12), anchor="w")
+            qa0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
 
         def nsDatafolBrowse():
             # global data
-            dfPath = tkinter.filedialog.askdirectory(parent=newSiteRoot)
+            dfPath = tkinter.filedialog.askdirectory(parent=newSiteRoot, initialdir=os.getcwd())
             dfPathLabel = tk.Label(definFrame, text=dfPath, font=(None, 12), anchor="w")
             dfPathLabel.place(relx=0.14, rely=0.82, relwidth=0.85, relheight=0.12)
             data["defaultDataFolder"] = dfPath
@@ -149,7 +154,7 @@ def hitOpen():
             # global data, siteInfo
             try:
                 if nssiteIDEntry.get() == "" or nssiteDescEntry.get() == "" or nsLatEntry.get() == "" or nsLongEntry.get() == "" or nsTZEntry.get() == "" or \
-                        data["qc0Path"] == "":
+                        data["qa0Path"] == "":
                     messagebox.showerror("Error", "Bad input! Please provide all the values.")
                 else:
                     data["siteCode"] = nssiteIDEntry.get()
@@ -157,13 +162,13 @@ def hitOpen():
                     data["siteIdentifier"] = data["siteCode"] + "," + " " + data["siteDesc"]
                     data["latitude"] = float(nsLatEntry.get())
                     data["longitude"] = float(nsLongEntry.get())
+                    data["elevation"] = float(nsElevVar.get())
                     data["timeZone"] = nsTZEntry.get()
                     data["comments"] = comments.get("1.0", tk.END)
                     data["integration"] = int(nsIntegVar.get())
                     data["plane"] = nsplaneVar.get()
                     # data["3compFilter"] = enableVar.get()
                     data["threshold"] = float(nsThreshVar.get())
-                    data["elevation"] = float(nsElevVar.get())
 
                     if nsplaneVar.get() == 1:
                         data["plane"] = 1
@@ -176,19 +181,19 @@ def hitOpen():
                             if nsplaneVar == 3:
                                 data["plane"] = 3
                                 # r3.select()
-                    # creating blank Qc0 file
-                    f = open('dataFiles/blankQC0', 'r')
+                    # creating blank QA0 file
+                    f = open(resource_path('dataFiles/blankQA0'), 'r')
                     rawData = f.read()
                     f.close()
                     f.flush
                     rawData = rawData.replace("Site Identifier:", "Site Identifier: " + data["siteIdentifier"])
                     rawData = rawData.replace(" --- Latitude:", " --- Latitude: " + str(nsLatEntry.get()))
-                    rawData = rawData.replace(" -- Longitude:", " -- Longitude: " + str(nsLongEntry.get()))
-                    rawData = rawData.replace(" -- Time Zone:", " -- Time Zone: " + str(nsTZEntry.get()))
+                    rawData = rawData.replace(" --- Longitude:", " --- Longitude: " + str(nsLongEntry.get()))
+                    rawData = rawData.replace(" --- Elevation:", " --- Elevation: " + str(data["elevation"]))
+                    rawData = rawData.replace(" --- Time Zone:", " --- Time Zone: " + str(nsTZEntry.get()))
                     rawData = rawData.replace("Integration (minutes):",
                                               "Integration (minutes): " + str(data["integration"]))
                     rawData = rawData.replace("Data Folder:", "Data Folder: " + data["defaultDataFolder"])
-                    rawData = rawData.replace("Elevation:", "Elevation: " + str(data["elevation"]))
                     if data["plane"] == 1:
                         plane = "0 Kt-Kn"
                     else:
@@ -202,14 +207,14 @@ def hitOpen():
                     rawData = rawData.replace("3-Component Filter:", "3-Component Filter: " + str(data["threshold"]))
                     rawData = rawData.replace("comments:", "comments: " + data["comments"])
 
-                    f = open(data["qc0Path"], 'w+')
+                    f = open(data["qa0Path"], 'w+')
                     f.write(rawData)
 
                     f.close
                     f.flush()
 
                     # updating siteinfo Dict
-                    siteInfo[data["siteIdentifier"]] = data["qc0Path"]
+                    siteInfo[data["siteIdentifier"]] = data["qa0Path"]
                     siteOptList.append(data["siteIdentifier"])
                     menu = siteOption.children["menu"]
                     menu.delete(0, "end")
@@ -232,7 +237,7 @@ def hitOpen():
             except ValueError:
                 messagebox.showerror("Error",
                                      "Bad input" + nssiteIDEntry.get() + nssiteDescEntry.get() + nsLatEntry.get() + nsLongEntry.get() + nsTZEntry.get() + nsElevVar.get() +
-                                     data["qc0Path"])
+                                     data["qa0Path"])
 
         def nsCancel():
             openRoot.deiconify()
@@ -281,9 +286,9 @@ def hitOpen():
         comments = tkst.ScrolledText(commentFrame)
         comments.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-        nsqcPathLabel = tk.Label(nsFrame, text="QC0 Path", font=(None, 12), anchor="w")
+        nsqcPathLabel = tk.Label(nsFrame, text="QA0 Path", font=(None, 12), anchor="w")
         nsqcPathLabel.place(relx=0.05, rely=0.40, relwidth=0.25, relheight=0.03)
-        qcBrowseButton = tk.Button(nsFrame, text="Browse", command=nsQC0Browse)
+        qcBrowseButton = tk.Button(nsFrame, text="Browse", command=nsQA0Browse)
         qcBrowseButton.place(relx=0.35, rely=0.40, relwidth=0.15, relheight=0.04)
 
         # Creating defaults frame
@@ -340,29 +345,29 @@ def hitOpen():
         nsOKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
         nsCancelButton = tk.Button(nsFrame, text="Cancel", command=nsCancel)
         nsCancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
-        newSiteRoot.iconbitmap('dataFiles/qcfit-icon.ico')
+        newSiteRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
         newSiteRoot.protocol("WM_DELETE_WINDOW", nsCancel)
 
         newSiteRoot.mainloop()
 
-    def browseQC0():
+    def browseQA0():
         global data, boundary, siteInfo
-        qc0Path = getQC0FilePath()
-        if len(qc0Path) > 1:
-            data["qc0Path"] = qc0Path
-            existQC0Data = utills.readFile(qc0Path)
-            index = existQC0Data.find("Site Identifier:")
-            string = existQC0Data[index + len("Site Identifier:"):]
+        qa0Path = getQA0FilePath()
+        if len(qa0Path) > 1:
+            data["qa0Path"] = qa0Path
+            existQA0Data = utills.readFile(qa0Path)
+            index = existQA0Data.find("Site Identifier:")
+            string = existQA0Data[index + len("Site Identifier:"):]
             siteID = string.split("\n")
             data["siteIdentifier"] = siteID[0].strip()
             siteOptList.append(siteID[0].strip())
-            index = existQC0Data.find('Data Folder: ')
-            string = existQC0Data[index + len('Data Folder: '):]
+            index = existQA0Data.find('Data Folder: ')
+            string = existQA0Data[index + len('Data Folder: '):]
             string = string.split("\n")
             data["defaultDataFolder"] = string[0]
 
             # updating siteinfo Dict
-            siteInfo[data["siteIdentifier"]] = data["qc0Path"]
+            siteInfo[data["siteIdentifier"]] = data["qa0Path"]
 
             menu = siteOption.children["menu"]
             menu.delete(0, "end")
@@ -431,9 +436,9 @@ def hitOpen():
                 monthToSave = data["month"]
                 save(monthToSave)
             resetStats()
-        # read QC0 file
-        qc0dat = utills.readFile(data["qc0Path"])
-        boundary = utills.getBoundariesTable(qc0dat)
+        # read QA0 file
+        qa0dat = utills.readFile(data["qa0Path"])
+        boundary = utills.getBoundariesTable(qa0dat)
         temp = boundary
         data["integration"] = int(integVar.get())
 
@@ -499,6 +504,7 @@ def hitOpen():
 
             openRoot.withdraw()
 
+            mainRoot.title(data["siteIdentifier"] + " - QAFIT")
             mainRoot.deiconify()
             # update mainRoot frame
             if data["plane"] != planeVar.get():
@@ -537,7 +543,7 @@ def hitOpen():
     newSiteButton = tk.Button(mainFrame, text="New Site", command=newSite)
     newSiteButton.place(relx=0.54, rely=0.2, relwidth=0.20, relheight=0.1)
 
-    newSiteBrowseButton = tk.Button(mainFrame, text="Browse", command=browseQC0)
+    newSiteBrowseButton = tk.Button(mainFrame, text="Browse", command=browseQA0)
     newSiteBrowseButton.place(relx=0.77, rely=0.2, relwidth=0.20, relheight=0.1)
 
     qcfLabel = tk.Label(mainFrame, text="QCF Data File", font=(None, 12), anchor="w")
@@ -570,7 +576,7 @@ def hitOpen():
     cancelOSButton.place(relx=0.77, rely=0.79, relwidth=0.20, relheight=0.1)
 
     openRoot.protocol("WM_DELETE_WINDOW", mainRoot.deiconify)
-    openRoot.iconbitmap('dataFiles/qcfit-icon.ico')
+    openRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
     openRoot.mainloop()
 
 
@@ -579,23 +585,23 @@ def updateSiteInfo(*args):
     if optVar.get() == "select a site":
         return
     else:
-        existQC0Data = utills.readFile(siteInfo[optVar.get()])
-        latitude = utills.pickValue(existQC0Data, 'Latitude:')
-        longitude = utills.pickValue(existQC0Data, 'Longitude:')
-        timeZone = int(float(utills.pickValue(existQC0Data, 'Time Zone:')))
-        elevation = float(utills.pickValue(existQC0Data, 'Elevation:'))
-        threshold = utills.pickValue(existQC0Data, '3-Component Filter:')
+        existQA0Data = utills.readFile(siteInfo[optVar.get()])
+        latitude = utills.pickValue(existQA0Data, 'Latitude:')
+        longitude = utills.pickValue(existQA0Data, 'Longitude:')
+        elevation = float(utills.pickValue(existQA0Data, 'Elevation:'))
+        timeZone = int(float(utills.pickValue(existQA0Data, 'Time Zone:')))
+        threshold = utills.pickValue(existQA0Data, '3-Component Filter:')
         if threshold == '':
             threshold = 1
         else:
             threshold = float(threshold)
         data["latitude"] = latitude
         data["longitude"] = longitude
-        data["timeZone"] = int(timeZone)
         data["elevation"] = elevation
-        data["integration"] = int(utills.pickValue(existQC0Data, 'Integration (minutes):'))
+        data["timeZone"] = int(timeZone)
+        data["integration"] = int(utills.pickValue(existQA0Data, 'Integration (minutes):'))
 
-        _plane = (utills.pickValue(existQC0Data, 'Plane:'))
+        _plane = (utills.pickValue(existQA0Data, 'Plane:'))
         if _plane == "":
             data["plane"] = 1
         else:
@@ -613,159 +619,159 @@ def hitEdit():
             monthToSave = data["month"]
             save(monthToSave)
 
-    qc0Path = getQC0FilePath()
-    if len(qc0Path) > 1:
-        QC0Data = utills.readFile(qc0Path)
+    qa0Path = getQA0FilePath()
+    if len(qa0Path) > 1:
+        QA0Data = utills.readFile(qa0Path)
 
-    index = QC0Data.find("Site Identifier:")
-    string = QC0Data[index + len("Site Identifier:"):]
+    index = QA0Data.find("Site Identifier:")
+    string = QA0Data[index + len("Site Identifier:"):]
     siteinf = string.split("\n")
     siteinf = siteinf[0].split(",")
 
     siteid = siteinf[0]
     siteDesc = siteinf[1]
-    latitude = utills.pickValue(QC0Data, 'Latitude:')
-    longitude = utills.pickValue(QC0Data, 'Longitude:')
-    timeZone = int(utills.pickValue(QC0Data, 'Time Zone:'))
-    elevation = float(utills.pickValue(QC0Data, 'Elevation:'))
-    threshold = utills.pickValue(QC0Data, '3-Component Filter:')
+    latitude = utills.pickValue(QA0Data, 'Latitude:')
+    longitude = utills.pickValue(QA0Data, 'Longitude:')
+    elevation = float(utills.pickValue(QA0Data, 'Elevation:'))
+    timeZone = int(utills.pickValue(QA0Data, 'Time Zone:'))
+    threshold = utills.pickValue(QA0Data, '3-Component Filter:')
     if threshold == 0:
         threshold = 1
-    integration = utills.pickValue(QC0Data, 'Integration (minutes):')
-    plane = utills.pickValue(QC0Data, 'Plane:')
-    index = QC0Data.find("Data Folder: ")
-    string = QC0Data[index + len("Data Folder: "):]
+    integration = utills.pickValue(QA0Data, 'Integration (minutes):')
+    plane = utills.pickValue(QA0Data, 'Plane:')
+    index = QA0Data.find("Data Folder: ")
+    string = QA0Data[index + len("Data Folder: "):]
     defFolder = string.split("\n")[0]
-    index = QC0Data.find("comments:")
+    index = QA0Data.find("comments:")
     if index > 1:
-        comments = QC0Data[index + len("comments:"):]
+        comments = QA0Data[index + len("comments:"):]
     else:
         comments = ""
 
-    def editQC0Browse():
+    def editQA0Browse():
 
-        editQC0Path = tkinter.filedialog.askdirectory(parent=editQC0Root)
-        qc0PathLabel.config(text=editQC0Path)
+        editQA0Path = tkinter.filedialog.askdirectory(parent=editQA0Root, initialdir=os.getcwd())
+        qa0PathLabel.config(text=editQA0Path)
 
-    def editQC0DatafolBrowse():
+    def editQA0DatafolBrowse():
         # global data
-        dfPath = tkinter.filedialog.askdirectory(parent=editQC0Root)
+        dfPath = tkinter.filedialog.askdirectory(parent=editQA0Root, initialdir=os.getcwd())
         dfPathLabel.config(text=dfPath)
 
-    def editQC0OK(plane):
+    def editQA0OK(plane):
         # global data, siteInfo
         try:
-            if editQC0siteIDEntry.get() == "" or editQC0siteDescEntry.get() == "" or editQC0LatEntry.get() == "" or editQC0LongEntry.get() == "" or editQC0TZEntry.get() == "":
+            if editQA0siteIDEntry.get() == "" or editQA0siteDescEntry.get() == "" or editQA0LatEntry.get() == "" or editQA0LongEntry.get() == "" or editQA0TZEntry.get() == "":
                 messagebox.showerror("Error", "Bad input! Please provide all the values.")
             else:
-                # creating blank Qc0 file
-                f = open('dataFiles/blankQC0', 'r')
+                # creating blank QA0 file
+                f = open(resource_path('dataFiles/blankQA0'), 'r')
                 rawData = f.read()
                 f.close()
                 f.flush
                 rawData = rawData.replace("Site Identifier:", "Site Identifier: " + str(edit_siteid.get()) + ", " + str(
                     edit_siteDesc.get()))
-                rawData = rawData.replace(" --- Latitude:", " --- Latitude: " + str(editQC0LatEntry.get()))
-                rawData = rawData.replace(" -- Longitude:", " -- Longitude: " + str(editQC0LongEntry.get()))
-                rawData = rawData.replace(" -- Time Zone:", " -- Time Zone: " + str(editQC0TZEntry.get()))
+                rawData = rawData.replace(" --- Latitude:", " --- Latitude: " + str(editQA0LatEntry.get()))
+                rawData = rawData.replace(" --- Longitude:", " --- Longitude: " + str(editQA0LongEntry.get()))
+                rawData = rawData.replace(" --- Elevation:", " --- Elevation: " + str(editQA0ElevVar.get()))
+                rawData = rawData.replace(" --- Time Zone:", " --- Time Zone: " + str(editQA0TZEntry.get()))
                 rawData = rawData.replace("Integration (minutes):",
-                                          "Integration (minutes): " + str(editQC0IntegVar.get()))
+                                          "Integration (minutes): " + str(editQA0IntegVar.get()))
                 rawData = rawData.replace("Data Folder:", "Data Folder: " + defFolder)
-                rawData = rawData.replace("Elevation:", "Elevation: " + str(editQC0ElevVar.get()))
-                if (editQC0planeVar.get() == 1):
+                if (editQA0planeVar.get() == 1):
                     plane = "0 Kt-Kn"
                 else:
-                    if editQC0planeVar.get() == 2:
+                    if editQA0planeVar.get() == 2:
                         plane = "1 Kt-Kd"
                     else:
-                        if editQC0planeVar.get() == 3:
+                        if editQA0planeVar.get() == 3:
                             plane = "2 Kn-Kd"
                 rawData = rawData.replace("Plane:", "Plane: " + plane)
                 # if data["3compFilter"] == 1:
                 rawData = rawData.replace("3-Component Filter:", "3-Component Filter: " + str(threshold))
                 rawData = rawData.replace("comments:", "comments: " + comments)
 
-                f = open(qc0Path, 'w+')
+                f = open(qa0Path, 'w+')
                 f.write(rawData)
 
                 f.close
                 f.flush()
-                editQC0Root.withdraw()
+                editQA0Root.withdraw()
         except ValueError:
             messagebox.showerror("Error",
-                                 "Bad input" + editQC0siteIDEntry.get() + editQC0siteDescEntry.get() + editQC0LatEntry.get() + editQC0LongEntry.get() + editQC0TZEntry.get() + editQC0ElevVar.get() +
-                                 data["qc0Path"])
+                                 "Bad input" + editQA0siteIDEntry.get() + editQA0siteDescEntry.get() + editQA0LatEntry.get() + editQA0LongEntry.get() + editQA0TZEntry.get() + editQA0ElevVar.get() +
+                                 data["qa0Path"])
 
-    def editQC0Cancel():
-        editQC0Root.withdraw()
+    def editQA0Cancel():
+        editQA0Root.withdraw()
 
     mainRoot.deiconify()
     # openRoot.configure(state=tk.DISABLED)
-    editQC0Root = tk.Tk()
-    editQC0Root.wm_geometry("500x600+500+250")
-    editQC0Root.title("Edit QC0")
+    editQA0Root = tk.Tk()
+    editQA0Root.wm_geometry("500x600+500+250")
+    editQA0Root.title("Edit QA0")
 
-    editQC0Frame = tk.Frame(editQC0Root)
-    editQC0Frame.place(relx=0, rely=0, relwidth=1, relheight=1)
+    editQA0Frame = tk.Frame(editQA0Root)
+    editQA0Frame.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-    editQC0siteIDLabel = tk.Label(editQC0Frame, text="SiteID", font=(None, 12), anchor="w")
-    editQC0siteIDLabel.place(relx=0.05, rely=0.02, relwidth=0.2, relheight=0.03)
+    editQA0siteIDLabel = tk.Label(editQA0Frame, text="SiteID", font=(None, 12), anchor="w")
+    editQA0siteIDLabel.place(relx=0.05, rely=0.02, relwidth=0.2, relheight=0.03)
 
-    edit_siteid = tk.StringVar(editQC0Frame)
-    editQC0siteIDEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_siteid)
-    editQC0siteIDEntry.place(relx=0.05, rely=0.055, relwidth=0.2, relheight=0.04)
+    edit_siteid = tk.StringVar(editQA0Frame)
+    editQA0siteIDEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_siteid)
+    editQA0siteIDEntry.place(relx=0.05, rely=0.055, relwidth=0.2, relheight=0.04)
     edit_siteid.set(siteid)
 
-    editQC0siteDescLabel = tk.Label(editQC0Frame, text="Site Description", font=(None, 12), anchor="w")
-    editQC0siteDescLabel.place(relx=0.30, rely=0.02, relwidth=0.6, relheight=0.03)
+    editQA0siteDescLabel = tk.Label(editQA0Frame, text="Site Description", font=(None, 12), anchor="w")
+    editQA0siteDescLabel.place(relx=0.30, rely=0.02, relwidth=0.6, relheight=0.03)
 
-    edit_siteDesc = tk.StringVar(editQC0Frame)
-    editQC0siteDescEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_siteDesc)
-    editQC0siteDescEntry.place(relx=0.30, rely=0.055, relwidth=0.6, relheight=0.04)
+    edit_siteDesc = tk.StringVar(editQA0Frame)
+    editQA0siteDescEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_siteDesc)
+    editQA0siteDescEntry.place(relx=0.30, rely=0.055, relwidth=0.6, relheight=0.04)
     edit_siteDesc.set(siteDesc)
 
-    editQC0LatLabel = tk.Label(editQC0Frame, text="Latitude", font=(None, 12), anchor="w")
-    editQC0LatLabel.place(relx=0.05, rely=0.105, relwidth=0.15, relheight=0.03)
+    editQA0LatLabel = tk.Label(editQA0Frame, text="Latitude", font=(None, 12), anchor="w")
+    editQA0LatLabel.place(relx=0.05, rely=0.105, relwidth=0.15, relheight=0.03)
 
-    edit_lat = tk.StringVar(editQC0Frame)
-    editQC0LatEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_lat)
-    editQC0LatEntry.place(relx=0.05, rely=0.14, relwidth=0.15, relheight=0.04)
+    edit_lat = tk.StringVar(editQA0Frame)
+    editQA0LatEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_lat)
+    editQA0LatEntry.place(relx=0.05, rely=0.14, relwidth=0.15, relheight=0.04)
     edit_lat.set(str(latitude))
 
-    editQC0LongLabel = tk.Label(editQC0Frame, text="Longitude", font=(None, 12), anchor="w")
-    editQC0LongLabel.place(relx=0.05, rely=0.19, relwidth=0.15, relheight=0.03)
+    editQA0LongLabel = tk.Label(editQA0Frame, text="Longitude", font=(None, 12), anchor="w")
+    editQA0LongLabel.place(relx=0.05, rely=0.19, relwidth=0.15, relheight=0.03)
 
-    edit_long = tk.StringVar(editQC0Frame)
-    editQC0LongEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_long)
-    editQC0LongEntry.place(relx=0.05, rely=0.225, relwidth=0.15, relheight=0.04)
+    edit_long = tk.StringVar(editQA0Frame)
+    editQA0LongEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_long)
+    editQA0LongEntry.place(relx=0.05, rely=0.225, relwidth=0.15, relheight=0.04)
     edit_long.set(str(longitude))
 
-    editQC0TZLabel = tk.Label(editQC0Frame, text="Time Zone", font=(None, 12), anchor="w")
-    editQC0TZLabel.place(relx=0.05, rely=0.275, relwidth=0.15, relheight=0.03)
+    editQA0TZLabel = tk.Label(editQA0Frame, text="Time Zone", font=(None, 12), anchor="w")
+    editQA0TZLabel.place(relx=0.05, rely=0.275, relwidth=0.15, relheight=0.03)
 
-    edit_tzone = tk.StringVar(editQC0Frame)
-    editQC0TZEntry = tk.Entry(editQC0Frame, font=(None, 12), textvariable=edit_tzone)
-    editQC0TZEntry.place(relx=0.05, rely=0.31, relwidth=0.15, relheight=0.04)
+    edit_tzone = tk.StringVar(editQA0Frame)
+    editQA0TZEntry = tk.Entry(editQA0Frame, font=(None, 12), textvariable=edit_tzone)
+    editQA0TZEntry.place(relx=0.05, rely=0.31, relwidth=0.15, relheight=0.04)
     edit_tzone.set(str(timeZone))
 
-    commentLabel = tk.Label(editQC0Frame, text="Comments", font=(None, 12), anchor="w")
+    commentLabel = tk.Label(editQA0Frame, text="Comments", font=(None, 12), anchor="w")
     commentLabel.place(relx=0.30, rely=0.105, relwidth=0.15, relheight=0.03)
 
-    commentFrame = tk.Frame(editQC0Frame, bd=1, bg="Black")
+    commentFrame = tk.Frame(editQA0Frame, bd=1, bg="Black")
     commentFrame.place(relx=0.30, rely=0.14, relwidth=0.6, relheight=0.21)
     commArea = tkst.ScrolledText(commentFrame)
     commArea.place(relx=0, rely=0, relwidth=1, relheight=1)
     commArea.insert(tk.INSERT, comments)
 
-    editQC0qcPathLabel = tk.Label(editQC0Frame, text="QC0 Path", font=(None, 12), anchor="w")
-    editQC0qcPathLabel.place(relx=0.05, rely=0.40, relwidth=0.25, relheight=0.03)
-    qc0PathLabel = tk.Label(editQC0Root, text=qc0Path, font=(None, 12), anchor="w")
-    qc0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
-    qcBrowseButton = tk.Button(editQC0Frame, text="Browse", command=editQC0Browse)
+    editQA0qcPathLabel = tk.Label(editQA0Frame, text="QA0 Path", font=(None, 12), anchor="w")
+    editQA0qcPathLabel.place(relx=0.05, rely=0.40, relwidth=0.25, relheight=0.03)
+    qa0PathLabel = tk.Label(editQA0Root, text=qa0Path, font=(None, 12), anchor="w")
+    qa0PathLabel.place(relx=0.15, rely=0.47, relwidth=0.84, relheight=0.04)
+    qcBrowseButton = tk.Button(editQA0Frame, text="Browse", command=editQA0Browse)
     qcBrowseButton.place(relx=0.35, rely=0.40, relwidth=0.15, relheight=0.04)
 
     # Creating defaults frame
-    defaultFrame = tk.Frame(editQC0Frame, bd=2, bg="Black")
+    defaultFrame = tk.Frame(editQA0Frame, bd=2, bg="Black")
     defaultFrame.place(relx=0.05, rely=0.55, relwidth=0.9, relheight=0.30)
     definFrame = tk.Frame(defaultFrame)
     definFrame.place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -773,23 +779,23 @@ def hitEdit():
     defLabel = tk.Label(definFrame, text="Defaults", font=(None, 16), anchor="w")
     defLabel.place(relx=0.03, rely=0.05, relwidth=0.18, relheight=0.15)
 
-    editQC0IntegVar = tk.StringVar(editQC0Frame)
-    editQC0IntegVar.set(integration)
-    editQC0IntegLabel = tk.Label(definFrame, text="Integration", font=(None, 12), anchor="w")
-    editQC0IntegLabel.place(relx=0.30, rely=0.05, relwidth=0.18, relheight=0.1)
+    editQA0IntegVar = tk.StringVar(editQA0Frame)
+    editQA0IntegVar.set(integration)
+    editQA0IntegLabel = tk.Label(definFrame, text="Integration", font=(None, 12), anchor="w")
+    editQA0IntegLabel.place(relx=0.30, rely=0.05, relwidth=0.18, relheight=0.1)
     integList = [1, 5, 15, 60]
-    editQC0integOpt = tk.OptionMenu(definFrame, editQC0IntegVar, *integList)
-    editQC0integOpt.place(relx=0.295, rely=0.21, relwidth=0.15, relheight=0.15)
+    editQA0integOpt = tk.OptionMenu(definFrame, editQA0IntegVar, *integList)
+    editQA0integOpt.place(relx=0.295, rely=0.21, relwidth=0.15, relheight=0.15)
 
-    editQC0PlaneLabel = tk.Label(definFrame, text="Plane", font=(None, 12))
-    editQC0PlaneLabel.place(relx=0.50, rely=0.05, relwidth=0.18, relheight=0.1)
+    editQA0PlaneLabel = tk.Label(definFrame, text="Plane", font=(None, 12))
+    editQA0PlaneLabel.place(relx=0.50, rely=0.05, relwidth=0.18, relheight=0.1)
 
-    editQC0planeVar = tk.IntVar(editQC0Frame)
-    rb1 = tk.Radiobutton(definFrame, text="Kt-Kn", font=(None, 12), variable=editQC0planeVar, value=1)
+    editQA0planeVar = tk.IntVar(editQA0Frame)
+    rb1 = tk.Radiobutton(definFrame, text="Kt-Kn", font=(None, 12), variable=editQA0planeVar, value=1)
     rb1.place(relx=0.5, rely=0.21, relwidth=0.18, relheight=0.12)
-    rb2 = tk.Radiobutton(definFrame, text="Kt-Kd", font=(None, 12), variable=editQC0planeVar, value=2)
+    rb2 = tk.Radiobutton(definFrame, text="Kt-Kd", font=(None, 12), variable=editQA0planeVar, value=2)
     rb2.place(relx=0.5, rely=0.34, relwidth=0.18, relheight=0.12)
-    rb3 = tk.Radiobutton(definFrame, text="Kn-Kd", font=(None, 12), variable=editQC0planeVar, value=3)
+    rb3 = tk.Radiobutton(definFrame, text="Kn-Kd", font=(None, 12), variable=editQA0planeVar, value=3)
     rb3.place(relx=0.5, rely=0.47, relwidth=0.18, relheight=0.12)
     if plane == "0 Kt-Kn":
         rb1.select()
@@ -800,38 +806,38 @@ def hitEdit():
     else:
         rb1.select()
 
-    editQC03compLabel = tk.Label(definFrame, text="3-component Filter", font=(None, 12))
-    editQC03compLabel.place(relx=0.70, rely=0.05, relwidth=0.28, relheight=0.1)
+    editQA03compLabel = tk.Label(definFrame, text="3-component Filter", font=(None, 12))
+    editQA03compLabel.place(relx=0.70, rely=0.05, relwidth=0.28, relheight=0.1)
 
-    editQC0ThreshVar = tk.StringVar(editQC0Frame)
-    editQC0ThreshVar.set(str(threshold))
-    editQC0ThreshOption = tk.OptionMenu(definFrame, editQC0ThreshVar, *threshList)
-    editQC0ThreshOption.place(relx=0.685, rely=0.21, relwidth=0.14, relheight=0.16)
-    # editQC0ThreshOption.configure(state=tk.DISABLED)
-    editQC0ThreshLabel = tk.Label(definFrame, text="Threshhold", font=(None, 12))
-    editQC0ThreshLabel.place(relx=0.84, rely=0.21, relwidth=0.136, relheight=0.14)
+    editQA0ThreshVar = tk.StringVar(editQA0Frame)
+    editQA0ThreshVar.set(str(threshold))
+    editQA0ThreshOption = tk.OptionMenu(definFrame, editQA0ThreshVar, *threshList)
+    editQA0ThreshOption.place(relx=0.685, rely=0.21, relwidth=0.14, relheight=0.16)
+    # editQA0ThreshOption.configure(state=tk.DISABLED)
+    editQA0ThreshLabel = tk.Label(definFrame, text="Threshhold", font=(None, 12))
+    editQA0ThreshLabel.place(relx=0.84, rely=0.21, relwidth=0.136, relheight=0.14)
 
     dataFolderLabel = tk.Label(definFrame, text="Data Folder", anchor="w")
     dataFolderLabel.place(relx=0.03, rely=0.655, relwidth=0.25, relheight=0.12)
     dfPathLabel = tk.Label(definFrame, text=defFolder, font=(None, 12), anchor="w")
     dfPathLabel.place(relx=0.14, rely=0.82, relwidth=0.85, relheight=0.12)
-    qcBrowseButton = tk.Button(definFrame, text="Browse", command=editQC0DatafolBrowse)
+    qcBrowseButton = tk.Button(definFrame, text="Browse", command=editQA0DatafolBrowse)
     qcBrowseButton.place(relx=0.295, rely=0.655, relwidth=0.18, relheight=0.12)
 
-    editQC0ElevLabel = tk.Label(definFrame, text="Elevation", anchor="w")
-    editQC0ElevLabel.place(relx=0.5, rely=0.655, relwidth=0.18, relheight=0.12)
-    editQC0ElevVar = tk.StringVar(editQC0Frame)
-    editQC0ElevEntry = tk.Entry(definFrame, font=(None, 12), textvariable=editQC0ElevVar)
-    editQC0ElevEntry.place(relx=0.695, rely=0.67, relwidth=0.15, relheight=0.15)
-    editQC0ElevVar.set(str(elevation))
+    editQA0ElevLabel = tk.Label(definFrame, text="Elevation", anchor="w")
+    editQA0ElevLabel.place(relx=0.5, rely=0.655, relwidth=0.18, relheight=0.12)
+    editQA0ElevVar = tk.StringVar(editQA0Frame)
+    editQA0ElevEntry = tk.Entry(definFrame, font=(None, 12), textvariable=editQA0ElevVar)
+    editQA0ElevEntry.place(relx=0.695, rely=0.67, relwidth=0.15, relheight=0.15)
+    editQA0ElevVar.set(str(elevation))
 
-    editQC0OKButton = tk.Button(editQC0Frame, text="OK", command=partial(editQC0OK, plane))
-    editQC0OKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
-    editQC0CancelButton = tk.Button(editQC0Frame, text="Cancel", command=editQC0Cancel)
-    editQC0CancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
-    editQC0Root.iconbitmap('dataFiles/qcfit-icon.ico')
-    editQC0Root.protocol("WM_DELETE_WINDOW", editQC0Cancel)
-    editQC0Root.mainloop()
+    editQA0OKButton = tk.Button(editQA0Frame, text="OK", command=partial(editQA0OK, plane))
+    editQA0OKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
+    editQA0CancelButton = tk.Button(editQA0Frame, text="Cancel", command=editQA0Cancel)
+    editQA0CancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
+    editQA0Root.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+    editQA0Root.protocol("WM_DELETE_WINDOW", editQA0Cancel)
+    editQA0Root.mainloop()
 
 
 def plotUpdateThroughMonth(*args):
@@ -919,27 +925,21 @@ def curvefitting():
     for df in (pdLow, pdMed, pdHigh):
         df.loc[(df["residual"] > data["threshold"]), flag] = 0
 
-    # calculate max values of K space - first read from QC0 if not present then find out
-
-    knMax = boundary[boundary["month"] == data["month"][:3].upper()]
-    knMax = int(list(knMax["MC_KN"])[0])
-    ktMax = boundary[boundary["month"] == data["month"][:3].upper()]
-    ktMax = int(list(ktMax["MC_KT_" + str(data["integration"])])[0])
-
-    # global airmass throttles for kt and kn maximus
-    am_thrott_kt = [0, 3, 10]
-    am_thrott_kn = [0, 5, 15]
+    # calculate max values of K space for each airmass
+    # Read corresponding columns first
+    month_content = boundary[boundary["month"] == data["month"][:3].upper()] 
     amass = ["low", "med", "high"]
-    for n, am in enumerate(amass):
-        data[am + "AM"]["knMax"] = knMax - am_thrott_kn[n]
-        data[am + "AM"]["ktMax"] = ktMax - am_thrott_kt[n]
+    amass_acro = ["LA", "MA", "HA"]
+    for am, am_acro in zip(amass, amass_acro):
+        data[am + "AM"]["knMax"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
+        data[am + "AM"]["ktMax"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
 
-    for i, df, amass in zip([0, 1, 2], [pdLow, pdMed, pdHigh], amass):
+    for df, am in zip([pdLow, pdMed, pdHigh], amass):
         # reduce maximus according to the airmass
-        knMax = data[amass + "AM"]["knMax"]
-        ktMax = data[amass + "AM"]["ktMax"]
-        knMax = int(knMax)  # - int(am_thrott_kn[i])
-        ktMax = int(ktMax)  # - int(am_thrott_kt[i])
+        knMax = data[am + "AM"]["knMax"]
+        ktMax = data[am + "AM"]["ktMax"]
+        knMax = int(knMax)
+        ktMax = int(ktMax)
 
         if (knMax < 1) or (ktMax < 1):
             for k in (["KT", "KN"]):
@@ -957,13 +957,8 @@ def curvefitting():
                     knMax = maxVal
 
             # now update the data dictionary
-            data[amass + "AM"]["ktMax"] = ktMax
-            data[amass + "AM"]["knMax"] = knMax
-            # data[amass + "AM"]["kdMax"] = kdMax
-
-            # now update the data dictionary
-            data[amass + "AM"]["ktMax"] = ktMax
-            data[amass + "AM"]["knMax"] = knMax
+            data[am + "AM"]["ktMax"] = ktMax
+            data[am + "AM"]["knMax"] = knMax
 
 
 def getBoundaries():
@@ -972,45 +967,30 @@ def getBoundaries():
     areaLeft = cAr.getArea("left")
     areaRight = cAr.getArea("right")
     airmasses = ["low", "med", "high"]
+    airmasses_acro = ["LA", "MA", "HA"]
     dataFrames = [pdLow, pdMed, pdHigh]
     location = [lowCanvas, medCanvas, highCanvas]
 
-    for amass, dframe, location in zip(airmasses, dataFrames, location):
+    for dim, (amass, am_acro, dframe, location) in enumerate(zip(airmasses, airmasses_acro, dataFrames, location)):
         # identifying column names in Boundary dataframe
-        if amass == "low":
-            boundShapeL = "LA_Left_S"
-            boundPosL = "LA_Left_P"
-            boundShapeR = "LA_Right_S"
-            boundPosR = "LA_Right_"
-            dim = 0
-        elif amass == "med":
-            boundShapeL = "MA_Left_S"
-            boundPosL = "MA_Left_P"
-            boundShapeR = "MA_Right_S"
-            boundPosR = "MA_Right_"
-            dim = 1
-        elif amass == "high":
-            boundShapeL = "HA_Left_S"
-            boundPosL = "HA_Left_P"
-            boundShapeR = "HA_Right_S"
-            boundPosR = "HA_Right_"
-            dim = 2
+        boundShapeL = am_acro + "_Left_S"
+        boundPosL = am_acro + "_Left_P"
+        boundShapeR = am_acro + "_Right_S"
+        boundPosR = am_acro + "_Right_P"
 
-        shapeL = boundary[boundary["month"] == data["month"][:3].upper()]
-        shapeL = list(shapeL[boundShapeL])[0]
-        posL = boundary[boundary["month"] == data["month"][:3].upper()]
-        posL = list(posL[boundPosL])[0]
-        shapeR = boundary[boundary["month"] == data["month"][:3].upper()]
-        shapeR = list(shapeR[boundShapeR])[0]
-        posR = boundary[boundary["month"] == data["month"][:3].upper()]
-        posR = list(posR[boundPosR + str(data["integration"])])[0]
+        month_content = boundary[boundary["month"] == data["month"][:3].upper()]
+        shapeL = int(list(month_content[boundShapeL])[0])
+        posL = int(list(month_content[boundPosL])[0])
+        shapeR = int(list(month_content[boundShapeR])[0])
+        posR = int(list(month_content[boundPosR])[0])
+        positionL = posL
+        positionR = posR
 
         # updating the data dictionary
-
-        shapeL = data[amass + "AM"]["shapeLeft"] = int(shapeL)
-        positionL = data[amass + "AM"]["posLeft"] = int(posL)
-        shapeR = data[amass + "AM"]["shapeRight"] = int(shapeR)
-        positionR = data[amass + "AM"]["posRight"] = int(posR)
+        data[amass + "AM"]["shapeLeft"] = shapeL
+        data[amass + "AM"]["posLeft"] = posL
+        data[amass + "AM"]["shapeRight"] = shapeR
+        data[amass + "AM"]["posRight"] = posR
 
         # identify flag and axes based on kspaces
         if data["plane"] == 1:
@@ -1318,8 +1298,8 @@ def getBoundaries():
             a = f.add_subplot(111)
             a.clear()
             line = np.linspace(0, 100, 101)
-            a.set_xlim([0, 100])
-            a.set_ylim([0, 100])
+            a.set_xlim([-2, 130])
+            a.set_ylim([-2, 100])
             a.plot(line, line, color="black")
             canvas = FigureCanvasTkAgg(f, master=location)
             canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -1342,27 +1322,18 @@ def getBoundaries():
 def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
     if len(dframe) > 1:
         col = dframe.columns
+        line = np.linspace(0, 100, 101)
 
         if len(dframe[dframe[flag] == 1]) > 0:  # Plot boundary only if data is there
             # Plotting left boundary
-            xLB = data[amass + "AM"]["lBound"]
-            # Making x count = 101 so it doesn't mess with existing graph
-            fillCount = 101 - len(xLB)
-            if fillCount > 0:
-                fillList = [xLB[-1]] * fillCount
-                xLB = xLB + fillList
+            xLB = list(data[amass + "AM"]["lBound"])
+            xLB = (xLB + [xLB[-1]] * max(0, len(line) - len(xLB)))[:len(line)]
             yLB = list(np.linspace(0, data[amass + "AM"]["knMax"], data[amass + "AM"]["knMax"] + 1))
-            fillCount = 101 - len(yLB)
-            fillList = [yLB[-1]] * fillCount
-            yLB = yLB + fillList
+            yLB = (yLB + [yLB[-1]] * max(0, len(line) - len(yLB)))[:len(line)]
 
             # plotting right boundary
-            xRB = data[amass + "AM"]["rBound"]
-            # Making x count = 101 so it doesn't mess with existing graph
-            fillCount = 101 - len(xRB)
-            if fillCount > 0:
-                fillList = [xRB[-1]] * fillCount
-                xRB = xRB + fillList
+            xRB = list(data[amass + "AM"]["rBound"])
+            xRB = (xRB + [xRB[-1]] * max(0, len(line) - len(xRB)))[:len(line)]
 
             yRB = yLB
             # yRB = [0,*yRB]
@@ -1408,7 +1379,6 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
         f = Figure(figsize=(3, 2.5), dpi=100)
         a = f.add_subplot(111)
         a.clear()
-        line = np.linspace(0, 100, 101)
         '''x=dframe[xAxis]
         y=dframe[yAxis]
         xy=np.vstack([x,y])
@@ -1419,9 +1389,9 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
         a.scatter(xAct, yAct, color='orangered', marker=".")
         if len(xActOut) > 0:
             a.scatter(xActOut, yActOut, color='firebrick', marker=".")
-
-        a.set_xlim([0, 100])
-        a.set_ylim([0, 100])
+        
+        a.set_xlim([-2, 130])
+        a.set_ylim([-2, 100])
         a.plot(line, line, color="black")
         a.tick_params(axis='x', colors='black')
         a.tick_params(axis='y', colors='black')
@@ -1547,7 +1517,7 @@ def graphConfig(amass, dframe):
         ax = f.add_subplot(111)
         ax.clear()
 
-        window_title = data["siteIdentifier"] + " " + "- " + amass.upper() + " - QCFIT"
+        window_title = data["siteIdentifier"] + " " + "- " + amass.upper() + " - QAFIT"
         mngr = plt.get_current_fig_manager()
         if hasattr(mngr, "set_window_title"):
             mngr.set_window_title(window_title)
@@ -1565,8 +1535,8 @@ def graphConfig(amass, dframe):
         plt.tick_params(axis='x', colors='black')
         plt.tick_params(axis='y', colors='black')
         plt.yticks(rotation=90)
-        plt.xlim(0, 100)
-        plt.ylim(0, 100)
+        plt.xlim(-2, 130)
+        plt.ylim(-2, 100)
         ax.scatter(xInact, yInact, color='gray', marker=".")
 
         if len(xActb10) > 0:
@@ -1603,7 +1573,7 @@ def graphConfig(amass, dframe):
         mngr.window.setGeometry = (50, 100, 640, 545)
         # mngr.window.setGeometry = (250, 120, 1280, 1024)
         # mngr.window.setGeometry
-        mngr.window.wm_iconbitmap("dataFiles/qcfit-icon.ico")
+        mngr.window.wm_iconbitmap(resource_path("dataFiles/qcfit-icon.ico"))
         plt.show(block=False)
 
     if data["editWinFlag"] == 1:
@@ -1611,7 +1581,7 @@ def graphConfig(amass, dframe):
     else:
         data["editWinFlag"] = 1
 
-        ktMaxSpinVal = 99
+        ktMaxSpinVal = 130
         minKt = data[amass + "AM"]["xLB"][int(data[amass + "AM"]["yLB"][-1])]
         knMaxSpinVal = 99
 
@@ -1664,7 +1634,7 @@ def graphConfig(amass, dframe):
                 countL = [xp for xp in countL if xp < int(data[amass + "AM"]["xLB"][yp])]
                 outL = outL + len(countL)
                 countR = list(dframe[dframe[y] == yp][x])
-                countR = [xp for xp in countR if x > int(data[amass + "AM"]["xRB"][yp])]
+                countR = [xp for xp in countR if xp > int(data[amass + "AM"]["xRB"][yp])]
                 outR = outR + len(countR)
                 # print("at y = ", y, "  ", "out left ", outL, "listL",
                 # list(filterData[filterData["KN"] == y][x]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
@@ -1708,8 +1678,12 @@ def graphConfig(amass, dframe):
             df.loc[(df["toList"] == 1) & (df[y] < data["y1"]), "toList"] = 0  # lower min bound
 
             df = df[df["toList"] == 1]
-            cols = list(df.columns[0:8])
+            cols = list(df.columns[2:7])
+            # Cols should be [Date, Time, ghi, dni, dhi, ... , KT, KN, KD] where Date and Time column is extracted from 'date' column.
             points = pd.DataFrame()
+            # 'date' column is the one with local timezone.
+            points['Date'] = df['date'].dt.date
+            points['Time'] = df['date'].dt.time
             for col in cols:
                 points[col] = df[col]
             # now add KT KN and KD
@@ -1717,16 +1691,16 @@ def graphConfig(amass, dframe):
             points["KT"] = df[x]
             points["KN"] = df[y]
             points["KD"] = df["KD"]
-            points[points.columns[0]] = points[points.columns[0]]  # .dt.date
+            # points[points.columns[0]] = points[points.columns[0]]  # .dt.date
 
-            # limit upto 4th dec places
-            # decimals = pd.Series([2, 2, 2], index=[points.columns[2], points.columns[3], points.columns[4]])
-            points[points.columns[2]] = points[points.columns[2]].astype('float').round(2)
-            points[points.columns[3]] = points[points.columns[3]].astype('float').round(2)
-            points[points.columns[4]] = points[points.columns[4]].astype('float').round(2)
-            points[points.columns[8]] = points[points.columns[8]].map(int)
-            points[points.columns[9]] = points[points.columns[9]].map(int)
-            points[points.columns[10]] = points[points.columns[10]].map(int)
+            # # limit upto 4th dec places
+            # # decimals = pd.Series([2, 2, 2], index=[points.columns[2], points.columns[3], points.columns[4]])
+            # points[points.columns[2]] = points[points.columns[2]].astype('float').round(2)
+            # points[points.columns[3]] = points[points.columns[3]].astype('float').round(2)
+            # points[points.columns[4]] = points[points.columns[4]].astype('float').round(2)
+            # points[points.columns[8]] = points[points.columns[8]].map(int)
+            # points[points.columns[9]] = points[points.columns[9]].map(int)
+            # points[points.columns[10]] = points[points.columns[10]].map(int)
 
             points.to_csv("Data_Points.csv")
             np.savetxt(r'Data_Points.txt', points.values, fmt='%s')
@@ -1852,7 +1826,7 @@ def graphConfig(amass, dframe):
             for amass, dframe in zip(["low", "med", "high"], [pdLow, pdMed, pdHigh]):
                 if data[amass + "AM"]["knMax"] != 'NA':
                     if 1 <= (int(data[amass + "AM"]["knMax"]) + knChange) <= 99:
-                        if 1 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 99:
+                        if 1 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 130:
 
                             data[amass + "AM"]["knMax"] = int(data[amass + "AM"]["knMax"]) + knChange
                             data[amass + "AM"]["ktMax"] = int(data[amass + "AM"]["ktMax"]) + ktChange
@@ -2406,6 +2380,10 @@ def graphConfig(amass, dframe):
 
         def close():
             data["editWinFlag"] = 0
+            mainFrame = filterDict[amass]
+            if len(mainFrame.columns) == 0:
+                mainFrame = dframe
+            plotGraph(mainFrame, amass, locationDict[amass], x, y, flag)
             plt.close("all")
             editGraph.withdraw()
 
@@ -2418,7 +2396,7 @@ def graphConfig(amass, dframe):
         ErrCanvas.place(relx=0.5, rely=0.5, relwidth=0.5, relheight=0.5)
 
         editGraph.wm_geometry("400x500+500+250")
-        editGraph.title(data["siteIdentifier"] + " " + "- " + amass.upper() + " - QCFIT")
+        editGraph.title(data["siteIdentifier"] + " " + "- " + amass.upper() + " - QAFIT")
 
         InLabel = tk.Label(StatCanvas, text="In", font=(None, 12), anchor="w")
         InLabel.place(relx=0.02, rely=0.01, relwidth=0.23, relheight=0.188)
@@ -2502,9 +2480,9 @@ def graphConfig(amass, dframe):
         boundCanvas.place(relx=0.005, rely=0.01, relwidth=0.987, relheight=0.98)
 
         # list for option menus
-        curveL = [1, 2, 3, 4, 5, 6]
-        curveR = [1, 2, 3, 4, 5]
-        posit = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        curveL = np.arange(1, 9)        # [1, 2, 3, 4, 5, 6, 7, 8]
+        curveR = np.arange(1, 8)        # [1, 2, 3, 4, 5, 6, 7]
+        posit = np.arange(1, 41)        # [1, ..., 40]
 
         cLabel = tk.Label(boundCanvas, text="Curve", font=(None, 12), anchor="w")
         cLabel.place(relx=0.01, rely=0.3566, relwidth=0.32, relheight=0.2866)
@@ -2586,7 +2564,7 @@ def graphConfig(amass, dframe):
         close.place(relx=0.72, rely=0.88, relwidth=0.18, relheight=0.07)
 
         editGraph.protocol("WM_DELETE_WINDOW", handleGraphCross)
-        editGraph.iconbitmap('dataFiles/qcfit-icon.ico')
+        editGraph.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
         editGraph.mainloop()
 
 
@@ -2819,8 +2797,8 @@ def plotByYear(*args):
                         thisYearX = thisYearData[xAxis]
                         thisYearY = thisYearData[yAxis]
                         a.scatter(thisYearX, thisYearY, color='cyan', marker=".")
-                    a.set_xlim([0, 100])
-                    a.set_ylim([0, 100])
+                    a.set_xlim([-2, 130])
+                    a.set_ylim([-2, 100])
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
@@ -2937,9 +2915,9 @@ def freqZoomed(event):
         ax.clear()
         mngr = plt.get_current_fig_manager()
         if hasattr(mngr, "set_window_title"):
-            mngr.set_window_title("QCFIT")
+            mngr.set_window_title("QAFIT")
         elif hasattr(mngr, "window") and hasattr(mngr.window, "wm_title"):
-            mngr.window.wm_title("QCFIT")
+            mngr.window.wm_title("QAFIT")
 
         titleFont = {'family': 'serif', 'color': 'black', 'weight': 'heavy', 'size': 25}
         labelFont = {'family': 'serif', 'color': 'red', 'weight': 'normal', 'size': 12}
@@ -2986,7 +2964,7 @@ def freqZoomed(event):
         plt.hist((highMean), label="High Airmass", color='blue')
         plt.legend()
         mngr = plt.get_current_fig_manager()
-        mngr.window.wm_iconbitmap("dataFiles/qcfit-icon.ico")
+        mngr.window.wm_iconbitmap(resource_path("dataFiles/qcfit-icon.ico"))
 
 
 def density(*args):
@@ -3356,9 +3334,9 @@ def density(*args):
                         a.scatter(xActb41, yActb41, color='goldenrod', marker=".")
                     if len(xActb51) > 0:
                         a.scatter(xActb51, yActb51, color='khaki', marker=".")
-
-                    a.set_xlim([0, 100])
-                    a.set_ylim([0, 100])
+                    
+                    a.set_xlim([-2, 130])
+                    a.set_ylim([-2, 100])
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
@@ -3405,7 +3383,6 @@ def findRange(previous, lower, upper):
             string = str(lower)
         else:
             string = previous
-    print(case)
     return string
 
 
@@ -3435,143 +3412,49 @@ def save(month):
     if iterCount == 0:
         messagebox.showerror("Error", "Sorry, No data available to save.")
         return
-    fileQC = open(data["qc0Path"], "r")
+    fileQC = open(data["qa0Path"], "r")
     content = fileQC.read().splitlines()
     fileQC.close()
-    # fileQC.flush()
 
-    # update QC0 data
-    position = monList.index(month) + 9  # locating month
+    # update QA0 data
+    position = monList.index(month) + 10  # locating month
     string = content[position]
 
     # find knMax and KtMax
     __kn = [data["lowAM"]["knMax"], data["medAM"]["knMax"], data["highAM"]["knMax"]]
-    __kn = [i for i in __kn if i != "NA"]
     __kt = [data["lowAM"]["ktMax"], data["medAM"]["ktMax"], data["highAM"]["ktMax"]]
-    __kt = [i for i in __kt if i != "NA"]
-
-    # identify right position index
-    if data["integration"] == 60:
-        ind = 3
-    elif data["integration"] == 15:
-        ind = 2
-    elif data["integration"] == 5:
-        ind = 1
-    elif data["integration"] == 1:
-        ind = 0
+    __kn = pd.to_numeric(pd.Series(__kn), errors="coerce").fillna(0).astype(int).tolist()
+    __kt = pd.to_numeric(pd.Series(__kt), errors="coerce").fillna(0).astype(int).tolist()
 
     # first writing Knmax and left curve shape and positions
-    string = string.split()
-    _mon = string[0]
-    _kmaxes = string[1]
-    _lam_left = string[2]
-    _lam_right = string[3]
-    _mam_left = string[4]
-    _mam_right = string[5]
-    _ham_left = string[6]
-    _ham_right = string[7]
+    _mon, _, _lam_max, _lam_left, _lam_right, _, _mam_max, _mam_left, _mam_right, _, _ham_max, _ham_left, _ham_right = re.split(r"[:,;, ]", string)
 
-    # break, update and join kspace maxes
-    _kmaxes = _kmaxes.split("-")
-
-    _kmaxes[0] = str(int(max(__kn)))
-    _kt = _kmaxes[1].split(";")
-    _kt = _kt[0].split("/")
-
-    if ind == 3:
-        _kt[ind] = str(int(float(max(__kt))))
-    else:
-        _kt[ind] = str(int(float(max(__kt))))
-    _kt = "/".join(_kt)
-    _kmaxes[1] = _kt + ";"
-    _kmaxes = "-".join(_kmaxes)
+    # replace Kn-Kt max values
+    _lam_max = f'{__kn[0]:02}-{__kt[0]:03}'
+    _mam_max = f'{__kn[1]:02}-{__kt[1]:03}'
+    _ham_max = f'{__kn[2]:02}-{__kt[2]:03}'
 
     # update left shape and position for all airmasses
+    _lam_left = f'{data["lowAM"]["shapeLeft"]}-{data["lowAM"]["posLeft"]:02}'
+    _mam_left = f'{data["medAM"]["shapeLeft"]}-{data["medAM"]["posLeft"]:02}'
+    _ham_left = f'{data["highAM"]["shapeLeft"]}-{data["highAM"]["posLeft"]:02}'
 
-    i = [_lam_left, _mam_left, _ham_left]
+    _lam_right = f'{data["lowAM"]["shapeRight"]}-{data["lowAM"]["posRight"]:02}'
+    _mam_right = f'{data["medAM"]["shapeRight"]}-{data["medAM"]["posRight"]:02}'
+    _ham_right = f'{data["highAM"]["shapeRight"]}-{data["highAM"]["posRight"]:02}'
 
-    for j in (2, 4, 6):
-        if j == 2:
-            _am = "low"
-            _lam_left = _lam_left.split("-")
-            _lam_left[0] = str(data[_am + "AM"]["shapeLeft"])
-            _lam_left[1] = str(data[_am + "AM"]["posLeft"])
-            if len(_lam_left[1]) == 1:
-                _lam_left[1] = "0" + _lam_left[1]
-            _lam_left = "-".join(_lam_left)
-        elif j == 4:
-            _am = "med"
-            _mam_left = _lam_left.split("-")
-            _mam_left[0] = str(data[_am + "AM"]["shapeLeft"])
-            _mam_left[1] = str(data[_am + "AM"]["posLeft"])
-            if len(_mam_left[1]) == 1:
-                _mam_left[1] = "0" + _mam_left[1]
-            _mam_left = "-".join(_mam_left)
-        elif j == 6:
-            i = _ham_left
-            _am = "high"
-            _ham_left = _lam_left.split("-")
-            _ham_left = _lam_left.split("-")
-            _ham_left[0] = str(data[_am + "AM"]["shapeLeft"])
-            _ham_left[1] = str(data[_am + "AM"]["posLeft"])
-            if len(_ham_left[1]) == 1:
-                _ham_left[1] = "0" + _ham_left[1]
-            _ham_left = "-".join(_ham_left)
-
-        # do the same for rest#
-
-    for j in (3, 5, 7):
-        if j == 3:
-            _am = "low"
-            _lam_right = _lam_right.split("-")
-            _lam_right[0] = str(data[_am + "AM"]["shapeRight"])
-            _pos = _lam_right[1].split("/")
-            _pos[ind] = str(data[_am + "AM"]["posRight"])
-            if len(_pos[ind]) == 1:
-                _pos[ind] = "0" + _pos[ind]
-            if ind == 3:
-                _pos[ind] = _pos[ind] + ";"
-            _pos = "/".join(_pos)
-            _lam_right[1] = _pos
-            _lam_right = "-".join(_lam_right)
-        if j == 5:
-            _am = "med"
-            _mam_right = _mam_right.split("-")
-            _mam_right[0] = str(data[_am + "AM"]["shapeRight"])
-            _pos = _mam_right[1].split("/")
-            _pos[ind] = str(data[_am + "AM"]["posRight"])
-            if len(_pos[ind]) == 1:
-                _pos[ind] = "0" + _pos[ind]
-            if ind == 3:
-                _pos[ind] = _pos[ind] + ";"
-            _pos = "/".join(_pos)
-            _mam_right[1] = _pos
-            _mam_right = "-".join(_mam_right)
-        if j == 7:
-            _am = "high"
-            _ham_right = _ham_right.split("-")
-            _ham_right[0] = str(data[_am + "AM"]["shapeRight"])
-            _pos = _ham_right[1].split("/")
-            _pos[ind] = str(data[_am + "AM"]["posRight"])
-            if len(_pos[ind]) == 1:
-                _pos[ind] = "0" + _pos[ind]
-            _pos = "/".join(_pos)
-            _ham_right[1] = _pos
-            _ham_right = "-".join(_ham_right)
-    string = [_mon, _kmaxes, _lam_left, _lam_right, _mam_left, _mam_right, _ham_left, _ham_right]
-    string = " ".join(string)
+    # flesh out the final string with all the updated values
+    string = f"{_mon}: {_lam_max} {_lam_left} {_lam_right}; {_mam_max} {_mam_left} {_mam_right}; {_ham_max} {_ham_left} {_ham_right}"
     content[position] = string
     content = "\n".join(content)
-    fid = open(data["qc0Path"], 'w')
+    fid = open(data["qa0Path"], 'w')
 
     if data["plane"] == 1:
         plane = "0 Kt-Kn"
-    else:
-        if data["plane"] == 2:
-            plane = "1 Kt-Kd"
-        else:
-            if data["plane"] == 3:
-                plane = "2 Kn-Kd"
+    elif data["plane"] == 2:
+        plane = "1 Kt-Kd"
+    elif data["plane"] == 3:
+        plane = "2 Kn-Kd"
 
     planeIndex = content.find("Plane")
     remain = content[planeIndex:]
@@ -3584,7 +3467,6 @@ def save(month):
     content = content.replace(compStr, "3-Component Filter: " + str(data["threshold"]))
     fid.write(content)
     fid.close()
-    # fid.flush()
 
 
 def savePng():
@@ -3649,7 +3531,7 @@ def help():
     helpRoot = tk.Toplevel()
 
     helpRoot.wm_geometry("800x720+500+250")
-    logo = ImageTk.PhotoImage(Image.open('dataFiles/disclaimer.png'))
+    logo = ImageTk.PhotoImage(Image.open(resource_path('dataFiles/disclaimer.png')))
 
     logoFrame = tk.Frame(helpRoot, bd=2)
     logoFrame.place(relx=0, rely=0, relwidth=0.5, relheight=1)
@@ -3697,7 +3579,7 @@ def help():
     textLabel = tk.Label(helpRoot, text=text)
     textLabel.place(relx=0.5, rely=0.0, relwidth=0.50, relheight=1)
 
-    helpRoot.iconbitmap('dataFiles/qcfit-icon.ico')
+    helpRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
     helpRoot.mainloop()
 
 
@@ -3711,12 +3593,12 @@ def callSave():
 
 mainRoot = tk.Tk()
 mainRoot.wm_geometry("1000x550+500+250")
-mainRoot.title("QCFIT")
+mainRoot.title("QAFIT")
 menuBar = tk.Menu(mainRoot)
 file = tk.Menu(menuBar, tearoff=0)
 file.add_command(label="Open", command=hitOpen)
 file.add_separator()
-file.add_command(label="Edit QC0", command=hitEdit)
+file.add_command(label="Edit QA0", command=hitEdit)
 file.add_separator()
 file.add_command(label="Save", command=callSave)
 file.add_command(label="Save BMP Image", command=saveBmp)
@@ -3735,7 +3617,7 @@ mainRoot.config(menu=menuBar)
 # Variables and lists
 #
 ####################################################
-data = {'qc0Path': '', 'defaultDataFolder': '', 'siteCode': '', 'siteDesc': '', 'siteIdentifier': '', 'latitude': 0.0,
+data = {'qa0Path': '', 'defaultDataFolder': '', 'siteCode': '', 'siteDesc': '', 'siteIdentifier': '', 'latitude': 0.0,
         'longitude': 0.0, 'timeZone': 0, 'elevation': 0.0, 'comments': '', 'integration': 1, 'plane': '',
         '3compFilter': '', 'threshold': 0.05, 'QCFDataFilepath': '', 'month': '', 'year': '', 'editWinFlag': 0,
         'listPageFlag': 0, 'flag': 'activeKtKn', 'xAxis': 'KT', 'yAxis': 'KN', 'x1': 0, 'x2': 0, 'y1': 0, 'y2': 0,
@@ -3805,11 +3687,11 @@ planeCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 planeLabel = tk.Label(planeCanvas, text="Plane")
 planeLabel.place(relx=0.02, rely=0.11, relwidth=0.5, relheight=0.4)
 
-r1 = tk.Radiobutton(planeCanvas, text="Kt-Kn", font=(None, 9), variable=planeVar, value=1)
+r1 = tk.Radiobutton(planeCanvas, text="Kt-Kn", font=(None, 9), variable=planeVar, value=1, anchor=tk.W)
 r1.place(relx=0.6, rely=0.01, relwidth=0.4, relheight=0.3)
-r2 = tk.Radiobutton(planeCanvas, text="Kt-Kd", font=(None, 9), variable=planeVar, value=2)
+r2 = tk.Radiobutton(planeCanvas, text="Kt-Kd", font=(None, 9), variable=planeVar, value=2, anchor=tk.W)
 r2.place(relx=0.6, rely=0.34, relwidth=0.4, relheight=0.3)
-r3 = tk.Radiobutton(planeCanvas, text="Kn-Kd", font=(None, 9), variable=planeVar, value=3)
+r3 = tk.Radiobutton(planeCanvas, text="Kn-Kd", font=(None, 9), variable=planeVar, value=3, anchor=tk.W)
 r3.place(relx=0.6, rely=0.67, relwidth=0.4, relheight=0.3)
 r1.select()
 planeVar.trace_add("write", callback=plotUpdateThroughkspace)
@@ -3883,7 +3765,7 @@ disable(compFilterCanvas.winfo_children())
 #
 ####################################################
 densityFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-densityFrame.place(relx=0.67, rely=0.01, relwidth=0.22, relheight=0.13)
+densityFrame.place(relx=0.67, rely=0.01, relwidth=0.32, relheight=0.13)
 
 densityCanvas = tk.Canvas(densityFrame)
 densityCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -3895,15 +3777,15 @@ denseOnOff = tk.Radiobutton(densityCanvas, text="Off", font=(None, 9), variable=
 denseOnOff.place(relx=0.08, rely=0.55, relwidth=0.2, relheight=0.4)
 denseOnOff.select()
 equalFreq = tk.Radiobutton(densityCanvas, text="Equal Freq", font=(None, 9), variable=densVar,
-                           value=2)  # , command=plot)
-equalFreq.place(relx=0.4, rely=0.01, relwidth=0.5, relheight=0.3)
+                           value=2, anchor=tk.W)  # , command=plot)
+equalFreq.place(relx=0.4, rely=0.01, relwidth=0.42, relheight=0.3)
 equalRange = tk.Radiobutton(densityCanvas, text="Equal Range", font=(None, 9), variable=densVar,
-                            value=3)  # , command=plot)
-equalRange.place(relx=0.4, rely=0.34, relwidth=0.4, relheight=0.3)
+                            value=3, anchor=tk.W)  # , command=plot)
+equalRange.place(relx=0.4, rely=0.34, relwidth=0.42, relheight=0.3)
 expFactor = tk.Radiobutton(densityCanvas, text="Exp(Factor):", font=(None, 9), variable=densVar,
-                           value=4)  # , command=plot)
+                           value=4, anchor=tk.W)  # , command=plot)
 densVar.trace_add('write', callback=density)
-expFactor.place(relx=0.4, rely=0.67, relwidth=0.4, relheight=0.3)
+expFactor.place(relx=0.4, rely=0.67, relwidth=0.42, relheight=0.3)
 expVar = tk.StringVar(mainRoot, value='3.0')
 expEntry = tk.Entry(densityCanvas, textvariable=expVar, state=tk.DISABLED)
 expEntry.place(relx=0.82, rely=0.67, relwidth=0.16, relheight=0.3)
@@ -3918,12 +3800,31 @@ disable(densityCanvas.winfo_children())
 #
 ####################################################
 
-logo = ImageTk.PhotoImage(Image.open('dataFiles/log.png'))
+logoSource = Image.open(resource_path('dataFiles/log.png'))
+logoPreview = logoSource.copy()
+logoPreview.thumbnail((130, 24), Image.Resampling.LANCZOS)
+logo = ImageTk.PhotoImage(logoPreview)
 
 logoFrame = tk.Frame(mainRoot, bd=2)
-logoFrame.place(relx=0.90, rely=0.01, relwidth=0.09, relheight=0.13)
+logoFrame.place(relx=0.86, rely=0.94, relwidth=0.13, relheight=0.05)
 labelImg = tk.Label(logoFrame, image=logo)
 labelImg.place(relx=0, rely=0, relwidth=1, relheight=1)
+logoState = {"size": None, "image": logo}
+
+
+def resizeLogo(event):
+    size = (event.width, event.height)
+    if size[0] <= 0 or size[1] <= 0 or size == logoState["size"]:
+        return
+
+    resizedImage = logoSource.copy()
+    resizedImage.thumbnail(size, Image.Resampling.LANCZOS)
+    logoState["image"] = ImageTk.PhotoImage(resizedImage)
+    logoState["size"] = size
+    labelImg.configure(image=logoState["image"])
+
+
+labelImg.bind("<Configure>", resizeLogo)
 ####################################################
 
 # Low air mass K-Space frame and controls
@@ -3931,7 +3832,7 @@ labelImg.place(relx=0, rely=0, relwidth=1, relheight=1)
 ####################################################
 
 lowKspaceFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-lowKspaceFrame.place(relx=0.01, rely=0.15, relwidth=0.08, relheight=0.19)
+lowKspaceFrame.place(relx=0.01, rely=0.15, relwidth=0.10, relheight=0.19)
 lowKspaceCanvas = tk.Canvas(lowKspaceFrame)
 lowKspaceCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
@@ -3948,12 +3849,12 @@ lowErrorCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 lowY = tk.Label(lowKspaceCanvas, text="KnMax:", font=(None, 9), anchor="w")
 lowY.place(relx=0.05, rely=0.02, relwidth=0.55, relheight=0.2)
 lowYVal = tk.Label(lowKspaceCanvas, text="", font=(None, 9), anchor="w")
-lowYVal.place(relx=0.65, rely=0.02, relwidth=0.20, relheight=0.2)
+lowYVal.place(relx=0.65, rely=0.02, relwidth=0.35, relheight=0.2)
 
 lowX = tk.Label(lowKspaceCanvas, text="KtMax:", font=(None, 9), anchor="w")
 lowX.place(relx=0.05, rely=0.24, relwidth=0.5, relheight=0.2)
 lowXVal = tk.Label(lowKspaceCanvas, text="", font=(None, 9), anchor="w")
-lowXVal.place(relx=0.65, rely=0.24, relwidth=0.20, relheight=0.2)
+lowXVal.place(relx=0.65, rely=0.24, relwidth=0.35, relheight=0.2)
 
 lowLeft = tk.Label(lowKspaceCanvas, text="Left:", font=(None, 9), anchor="w")
 lowLeft.place(relx=0.05, rely=0.50, relwidth=0.38, relheight=0.2)
@@ -4017,7 +3918,7 @@ disable(lowErrorCanvas.winfo_children())
 #
 ####################################################
 medKspaceFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-medKspaceFrame.place(relx=0.34, rely=0.15, relwidth=0.08, relheight=0.19)
+medKspaceFrame.place(relx=0.34, rely=0.15, relwidth=0.10, relheight=0.19)
 medKspaceCanvas = tk.Canvas(medKspaceFrame)
 medKspaceCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
@@ -4034,12 +3935,12 @@ medErrorCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 medY = tk.Label(medKspaceCanvas, text="KnMax:", font=(None, 9), anchor="w")
 medY.place(relx=0.05, rely=0.02, relwidth=0.55, relheight=0.2)
 medYVal = tk.Label(medKspaceCanvas, text="", font=(None, 9), anchor="w")
-medYVal.place(relx=0.65, rely=0.02, relwidth=0.20, relheight=0.2)
+medYVal.place(relx=0.65, rely=0.02, relwidth=0.35, relheight=0.2)
 
 medX = tk.Label(medKspaceCanvas, text="KtMax:", font=(None, 9), anchor="w")
 medX.place(relx=0.05, rely=0.24, relwidth=0.5, relheight=0.2)
 medXVal = tk.Label(medKspaceCanvas, text="", font=(None, 9), anchor="w")
-medXVal.place(relx=0.65, rely=0.24, relwidth=0.20, relheight=0.2)
+medXVal.place(relx=0.65, rely=0.24, relwidth=0.35, relheight=0.2)
 
 medLeft = tk.Label(medKspaceCanvas, text="Left:", font=(None, 9), anchor="w")
 medLeft.place(relx=0.05, rely=0.50, relwidth=0.38, relheight=0.2)
@@ -4104,7 +4005,7 @@ disable(medErrorCanvas.winfo_children())
 #
 ####################################################
 highKspaceFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-highKspaceFrame.place(relx=0.67, rely=0.15, relwidth=0.08, relheight=0.19)
+highKspaceFrame.place(relx=0.67, rely=0.15, relwidth=0.10, relheight=0.19)
 highKspaceCanvas = tk.Canvas(highKspaceFrame)
 highKspaceCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
@@ -4121,12 +4022,12 @@ highErrorCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 highY = tk.Label(highKspaceCanvas, text="KnMax:", font=(None, 9), anchor="w")
 highY.place(relx=0.05, rely=0.02, relwidth=0.55, relheight=0.2)
 highYVal = tk.Label(highKspaceCanvas, text="", font=(None, 9), anchor="w")
-highYVal.place(relx=0.65, rely=0.02, relwidth=0.20, relheight=0.2)
+highYVal.place(relx=0.65, rely=0.02, relwidth=0.35, relheight=0.2)
 
 highX = tk.Label(highKspaceCanvas, text="KtMax:", font=(None, 9), anchor="w")
 highX.place(relx=0.05, rely=0.24, relwidth=0.5, relheight=0.2)
 highXVal = tk.Label(highKspaceCanvas, text="", font=(None, 9), anchor="w")
-highXVal.place(relx=0.65, rely=0.24, relwidth=0.20, relheight=0.2)
+highXVal.place(relx=0.65, rely=0.24, relwidth=0.35, relheight=0.2)
 
 highLeft = tk.Label(highKspaceCanvas, text="Left:", font=(None, 9), anchor="w")
 highLeft.place(relx=0.05, rely=0.50, relwidth=0.38, relheight=0.2)
@@ -4228,7 +4129,7 @@ highCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 #
 ####################################################
 densityColorFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-densityColorFrame.place(relx=0.01, rely=0.94, relwidth=0.72, relheight=0.05)
+densityColorFrame.place(relx=0.01, rely=0.94, relwidth=0.64, relheight=0.05)
 densityColorCanvas = tk.Canvas(densityColorFrame)
 densityColorCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 desityLabel = tk.Label(densityColorCanvas, text="Density", font=(None, 10))
@@ -4257,14 +4158,14 @@ bin5Label.place(relx=0.77, rely=0, relwidth=0.075, relheight=1)
 #
 ####################################################
 integrationFrame = tk.Frame(mainRoot, bd=2, bg="gray")
-integrationFrame.place(relx=0.74, rely=0.94, relwidth=0.25, relheight=0.05)
+integrationFrame.place(relx=0.66, rely=0.94, relwidth=0.19, relheight=0.05)
 integrationCanvas = tk.Canvas(integrationFrame)
 integrationCanvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
 integTimeLabel = tk.Label(integrationFrame, text="Integration Time (min): " + str(data["integration"]))
-integTimeLabel.place(relx=0.05, rely=0.1, relwidth=0.70, relheight=0.8)
+integTimeLabel.place(relx=0.02, rely=0.1, relwidth=0.96, relheight=0.8)
 
 disable(integrationFrame.winfo_children())
 mainRoot.protocol("WM_DELETE_WINDOW", exitProgram)
-mainRoot.iconbitmap('dataFiles/qcfit-icon.ico')
+mainRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
 mainRoot.mainloop()
