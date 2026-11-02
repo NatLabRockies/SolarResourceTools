@@ -21,29 +21,28 @@ VALID_QA0 = """  Site Identifier: TEST, Sample station
  --- Elevation: 1827.0
  --- Time Zone: -7.0
 
-     ---Low Airmass--  ---Med Airmass--  --High Airmass--
-     -MAX-  -LFT RGT-  -MAX-  -LFT RGT-  -MAX-  -LFT RGT-
-     KN KT  S  P S  P  KN KT  S  P S  P  KN KT  S  P S  P
-
-JAN: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-FEB: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-MAR: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-APR: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-MAY: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-JUN: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-JUL: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-AUG: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-SEP: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-OCT: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-NOV: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
-DEC: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00
+     ---Low Airmass--- ---Med Airmass--- ---High Airmass--
+     -Max-  -Lft Rgt-  -Max-  -Lft Rgt-  -Max-  -Lft Rgt-
+     Kn Kt  S P  S P   Kn Kt  S P  S P   Kn Kt  S P  S P
+JAN: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+FEB: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+MAR: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+APR: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+MAY: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+JUN: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+JUL: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+AUG: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+SEP: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+OCT: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+NOV: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
+DEC: 00-000 0-00 0-00; 00-000 0-00 0-00; 00-000 0-00 0-00;
 
 DEFAULT CONFIGURATION
-Integration (minutes): 1
-Data Folder:
-Plane: 0 Kt-Kn
-3-Component Filter: 1.0
-Comments:
+  Integration (minutes): 1
+  Data Folder:
+  Plane: 0 Kt-Kn
+  3-Component Filter: 1.0
+  Comments:
 """
 
 
@@ -56,11 +55,16 @@ class QA0FormatTests(unittest.TestCase):
             return utills.readQA0('station.qa0')
 
     def test_legacy_format_and_optional_final_semicolon(self):
+        rows = [line for line in self.valid.splitlines()
+                if line[:3] in 'JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC'.split()]
+        self.assertEqual(len(rows), 12)
+        self.assertTrue(all(line.endswith(';') for line in rows))
         table = utills.getBoundariesTable(self.read_text(self.valid))
         self.assertEqual(table.shape, (12, 19))
         self.assertEqual(table.iloc[0]['month'], 'JAN')
         self.assertEqual(table.iloc[-1]['month'], 'DEC')
-        text = self.valid.replace('0-00\n', '0-00;\n')
+        text = self.valid.replace(';\n', '\n')
+        self.assertNotEqual(text, self.valid)
         self.assertTrue(table.equals(utills.getBoundariesTable(self.read_text(text))))
 
     def test_new_template_and_three_digit_kt(self):
@@ -71,7 +75,7 @@ class QA0FormatTests(unittest.TestCase):
             '     ---Low Airmass--- ---Med Airmass--- ---High Airmass--\n'
             '     -Max-  -Lft Rgt-  -Max-  -Lft Rgt-  -Max-  -Lft Rgt-\n'
             '     Kn Kt  S P  S P   Kn Kt  S P  S P   Kn Kt  S P  S P\n',
-        ).replace('0-00\n', '0-00;\n').replace('00-000', '95-123')
+        ).replace('00-000', '95-123')
         table = utills.getBoundariesTable(self.read_text(text))
         self.assertEqual(table.iloc[0]['LA_MAX_KT'], '123')
         self.assertEqual(table.iloc[-1]['HA_MAX_KN'], '95')
@@ -126,9 +130,9 @@ class QA0FormatTests(unittest.TestCase):
                 with self.subTest(air_mass=air_mass, field=field):
                     lines = self.valid.splitlines()
                     row = next(i for i, line in enumerate(lines) if line.startswith('JAN:'))
-                    groups = lines[row].partition(':')[2].strip().split(';')
+                    groups = lines[row].partition(':')[2].strip().removesuffix(';').split(';')
                     groups[index] = replacement
-                    lines[row] = 'JAN: ' + '; '.join(group.strip() for group in groups)
+                    lines[row] = 'JAN: ' + '; '.join(group.strip() for group in groups) + ';'
                     with self.assertRaises(utills.QA0FormatError) as caught:
                         self.read_text('\n'.join(lines))
                     message = str(caught.exception)
