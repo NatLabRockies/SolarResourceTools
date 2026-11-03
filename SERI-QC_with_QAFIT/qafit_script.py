@@ -916,7 +916,8 @@ def curvefitting():
     ip["bin"] = ""
     ip["residual"] = ip["XT"] - ip["XN"] - ip["XD"]
 
-    plotData = ip[ip["monthName"] == monVar.get()].copy()
+    # Use the unrounded Kn ratio; KN is truncated to integer percent.
+    plotData = ip[(ip["monthName"] == monVar.get()) & (ip["XN"] > 0.01)].copy()
 
     # seperate data based on airmasses
 
@@ -1316,7 +1317,7 @@ def getBoundaries():
             a.clear()
             line = np.linspace(0, 100, 101)
             a.set_xlim([-2, 130])
-            a.set_ylim([-2, 100])
+            a.set_ylim([0, 100])
             a.plot(line, line, color="black")
             canvas = FigureCanvasTkAgg(f, master=location)
             canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
@@ -1337,7 +1338,7 @@ def getBoundaries():
 
 
 def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
-    if len(dframe) > 1:
+    if len(dframe) > 0:
         col = dframe.columns
         line = np.linspace(0, 100, 101)
 
@@ -1408,7 +1409,7 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
             a.scatter(xActOut, yActOut, color='firebrick', marker=".")
         
         a.set_xlim([-2, 130])
-        a.set_ylim([-2, 100])
+        a.set_ylim([0, 100])
         a.plot(line, line, color="black")
         a.tick_params(axis='x', colors='black')
         a.tick_params(axis='y', colors='black')
@@ -1553,7 +1554,7 @@ def graphConfig(amass, dframe):
         plt.tick_params(axis='y', colors='black')
         plt.yticks(rotation=90)
         plt.xlim(-2, 130)
-        plt.ylim(-2, 100)
+        plt.ylim(0, 100)
         ax.scatter(xInact, yInact, color='gray', marker=".")
 
         if len(xActb10) > 0:
@@ -2815,7 +2816,7 @@ def plotByYear(*args):
                         thisYearY = thisYearData[yAxis]
                         a.scatter(thisYearX, thisYearY, color='cyan', marker=".")
                     a.set_xlim([-2, 130])
-                    a.set_ylim([-2, 100])
+                    a.set_ylim([0, 100])
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
@@ -3095,7 +3096,8 @@ def density(*args):
         densityData["freq%"] = densityData["frequency"] / sum(densityData["frequency"])
         densityData = densityData.sort_values(by=['density'])
         densityData["cumulative"] = densityData['freq%'].cumsum()
-        densityData.iloc[len(densityData) - 1, 4] = 1
+        if not densityData.empty:
+            densityData.iloc[len(densityData) - 1, 4] = 1
         # Allocating bins
         densityData.loc[(densityData["cumulative"] <= 1), "densBin"] = 5
         densityData.loc[(densityData["cumulative"] < .8), "densBin"] = 4
@@ -3353,7 +3355,7 @@ def density(*args):
                         a.scatter(xActb51, yActb51, color='khaki', marker=".")
                     
                     a.set_xlim([-2, 130])
-                    a.set_ylim([-2, 100])
+                    a.set_ylim([0, 100])
                     a.plot(line, line, color="black")
                     a.plot(xLB, yLB, color="green")
                     a.plot(xRB, yRB, color="green")
