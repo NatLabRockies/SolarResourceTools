@@ -37,6 +37,16 @@ import re
 import math
 
 
+def setWindowIcon(window):
+    with Image.open(resource_path('dataFiles/qafit-icon.ico')) as source:
+        icons = [
+            ImageTk.PhotoImage(source.resize((size, size), Image.Resampling.LANCZOS), master=window)
+            for size in (32, 128)
+        ]
+    window.iconphoto(False, *icons)
+    window._qafitIconImages = icons
+
+
 def getFilePath():
     global data
     root = tk.Tk()
@@ -344,7 +354,7 @@ def hitOpen():
         nsOKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
         nsCancelButton = tk.Button(nsFrame, text="Cancel", command=nsCancel)
         nsCancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
-        newSiteRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+        setWindowIcon(newSiteRoot)
         newSiteRoot.protocol("WM_DELETE_WINDOW", nsCancel)
 
         newSiteRoot.mainloop()
@@ -584,7 +594,7 @@ def hitOpen():
     cancelOSButton.place(relx=0.77, rely=0.79, relwidth=0.20, relheight=0.1)
 
     openRoot.protocol("WM_DELETE_WINDOW", mainRoot.deiconify)
-    openRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+    setWindowIcon(openRoot)
     openRoot.mainloop()
 
 
@@ -852,7 +862,7 @@ def hitEdit():
     editQA0OKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
     editQA0CancelButton = tk.Button(editQA0Frame, text="Cancel", command=editQA0Cancel)
     editQA0CancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
-    editQA0Root.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+    setWindowIcon(editQA0Root)
     editQA0Root.protocol("WM_DELETE_WINDOW", editQA0Cancel)
     editQA0Root.mainloop()
 
@@ -1108,8 +1118,8 @@ def getBoundaries():
                 scoreL = 1000
                 scoreR = 1000
 
-                for curve in range(0, 6):
-                    for position in range(1, 21):
+                for curve in range(0, 8):
+                    for position in range(1, 31):
                         shift = ((position - 1) * 2.5)
                         dataCountL = 0
                         dataCountR = 0
@@ -1120,7 +1130,7 @@ def getBoundaries():
                         pointsL = zeroesL + pointsL[len(zeroesL):]
 
                         # Find the right curve with shift
-                        if curve < 5:
+                        if curve < 7:
                             pointsR = ut.curveRight[curve]
                             pointsR = [(point) + shift for point in pointsR]
 
@@ -1139,7 +1149,7 @@ def getBoundaries():
                             """if curve == 1:
                                 if position == 14:
                                     print("")"""
-                            if curve < 5:
+                            if curve < 7:
                                 activeCountR = list(df[df["KN"] == y]["KT"])
                                 activeCountR = len([x for x in activeCountR if x > (pointsR[y])])
                                 """# for debugging purpose
@@ -1154,17 +1164,17 @@ def getBoundaries():
 
                         pixCountL = np.sum(abs(np.array(pointsL[:knMax + 1]) - np.array(activeLBound)))
                         pcL[dim, curve, position - 1] = pixCountL
-                        pixCountL = pixCountL / (areaLeft.iloc[int(knMax) - 1][(curve * 20) + position])
+                        pixCountL = pixCountL / areaLeft.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
 
                         dcL[dim, curve, position - 1] = dataCountL
                         lcount = dataCountL
                         dataCountL = dataCountL / len(df)
                         scoreNowL = pixCountL + dataCountL
 
-                        if curve < 5:
+                        if curve < 7:
                             pixCountR = np.sum(abs(np.array(pointsR[:knMax + 1]) - np.array(activeRBound)))
                             pcR[dim, curve, position - 1] = pixCountR
-                            pixCountR = pixCountR / (areaRight.iloc[int(knMax) - 1][(curve * 20) + position])
+                            pixCountR = pixCountR / areaRight.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
                             dcR[dim, curve, position - 1] = dataCountR
                             rcount = dataCountR
                             dataCountR = dataCountR / len(df)
@@ -1177,7 +1187,7 @@ def getBoundaries():
                             shapeL = curve + 1
                             positionL = position
                             outL = lcount
-                        if curve < 5:
+                        if curve < 7:
                             if scoreNowR < scoreR:
                                 scoreR = scoreNowR
                                 shapeR = curve + 1
@@ -1254,7 +1264,7 @@ def getBoundaries():
 
             leftB = list(ut.curveLeft[shapeL - 1])
             leftB = leftB[0:int(knMax)]  # get all the points of curve upto Ymax
-            leftB = [(i + (2.5 * positionL)) for i in leftB]
+            leftB = [(i + (2.5 * (positionL - 1))) for i in leftB]
 
             if leftB[-1] != int(ktMax):
                 leftB.append(int(ktMax))
@@ -1270,7 +1280,7 @@ def getBoundaries():
 
             rightB = list(ut.curveRight[shapeR - 1])
             rightB = rightB[0:int(knMax)]  # get all the points of curve upto Ymax
-            rightB = [(i + (2.5 * positionR)) for i in rightB]
+            rightB = [(i + (2.5 * (positionR - 1))) for i in rightB]
             rightB = [i for i in rightB if i <= int(ktMax)]
             if rightB[-1] != int(ktMax):
                 rightB.append(int(ktMax))
@@ -1591,7 +1601,7 @@ def graphConfig(amass, dframe):
         mngr.window.setGeometry = (50, 100, 640, 545)
         # mngr.window.setGeometry = (250, 120, 1280, 1024)
         # mngr.window.setGeometry
-        mngr.window.wm_iconbitmap(resource_path("dataFiles/qcfit-icon.ico"))
+        setWindowIcon(mngr.window)
         plt.show(block=False)
 
     if data["editWinFlag"] == 1:
@@ -1855,7 +1865,7 @@ def graphConfig(amass, dframe):
 
                             # Prepare left boundary
                             yLB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-                            shiftL = data[amass + 'AM']['posLeft'] * 2.5
+                            shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
                             xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
                             xLB = [point + shiftL for point in xLB]
 
@@ -1872,7 +1882,7 @@ def graphConfig(amass, dframe):
 
                             # Prepare right boundary
                             yRB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-                            shiftR = data[amass + 'AM']['posRight'] * 2.5
+                            shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
                             xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
                             xRB = [point + shiftR for point in xRB]
                             # copy first value at 0th index
@@ -1970,7 +1980,7 @@ def graphConfig(amass, dframe):
 
                 # Prepare left boundary
                 yLB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-                shiftL = data[amass + 'AM']['posLeft'] * 2.5
+                shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
                 xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
                 xLB = [point + shiftL for point in xLB]
 
@@ -1987,7 +1997,7 @@ def graphConfig(amass, dframe):
 
                 # Prepare right boundary
                 yRB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-                shiftR = data[amass + 'AM']['posRight'] * 2.5
+                shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
                 xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
                 xRB = [point + shiftR for point in xRB]
                 # copy first value at 0th index
@@ -2224,8 +2234,8 @@ def graphConfig(amass, dframe):
                 activeLBound = data[amass + "AM"]["activeLBound"]
                 activeRBound = data[amass + "AM"]["activeRBound"]
 
-            for curve in range(0, 6):
-                for position in range(1, 21):
+            for curve in range(0, 8):
+                for position in range(1, 31):
                     shift = ((position - 1) * 2.5)
                     dataCountL = 0
                     dataCountR = 0
@@ -2236,7 +2246,7 @@ def graphConfig(amass, dframe):
                     pointsL = zeroesL + pointsL[len(zeroesL):]
 
                     # Find the right curve with shift
-                    if curve < 5:
+                    if curve < 7:
                         pointsR = ut.curveRight[curve]
                         pointsR = [(point) + shift for point in pointsR]
 
@@ -2247,7 +2257,7 @@ def graphConfig(amass, dframe):
                             activeCountL = len([xp for xp in activeCountL if xp < (pointsL[yp])])
                             dataCountL = dataCountL + activeCountL
 
-                            if curve < 5:
+                            if curve < 7:
                                 activeCountR = list(df[df[y] == yp][x])
                                 activeCountR = len([xp for xp in activeCountR if xp > (pointsR[yp])])
                                 dataCountR = dataCountR + activeCountR
@@ -2256,13 +2266,13 @@ def graphConfig(amass, dframe):
                         pcL[dim, curve, position - 1] = pixCountL  # / scale
                         dcL[dim, curve, position - 1] = dataCountL  # * scale
 
-                        if curve < 5:
+                        if curve < 7:
                             pixCountR = np.sum(abs(np.array(pointsR[:knMax + 1]) - np.array(activeRBound)))
                             pcR[dim, curve, position - 1] = pixCountR  # / scale
                             dcR[dim, curve, position - 1] = dataCountR  # * scale
 
                     pixCountL = pcL[dim, curve, position - 1] / scale
-                    pixCountL = pixCountL / (areaLeft.iloc[int(knMax) - 1][(curve * 20) + position])
+                    pixCountL = pixCountL / areaLeft.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
 
                     dataCountL = dcL[dim, curve, position - 1] * scale
                     lcount = dcL[dim, curve, position - 1]
@@ -2277,9 +2287,9 @@ def graphConfig(amass, dframe):
                         positionL = position
                         outL = lcount
 
-                    if curve < 5:
+                    if curve < 7:
                         pixCountR = pcR[dim, curve, position - 1] / scale
-                        pixCountR = pixCountR / (areaRight.iloc[int(knMax) - 1][(curve * 20) + position])
+                        pixCountR = pixCountR / areaRight.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
                         dataCountR = dcR[dim, curve, position - 1] * scale
                         rcount = dcR[dim, curve, position - 1]
                         dataCountR = dataCountR / len(df)
@@ -2300,7 +2310,7 @@ def graphConfig(amass, dframe):
 
             leftB = list(ut.curveLeft[shapeL - 1])
             leftB = leftB[0:int(knMax)]  # get all the points of curve upto Ymax
-            leftB = [(i + (2.5 * positionL)) for i in leftB]
+            leftB = [(i + (2.5 * (positionL - 1))) for i in leftB]
 
             if leftB[-1] != int(ktMax):
                 leftB.append(int(ktMax))
@@ -2316,7 +2326,7 @@ def graphConfig(amass, dframe):
 
             rightB = list(ut.curveRight[shapeR - 1])
             rightB = rightB[0:int(knMax)]  # get all the points of curve upto Ymax
-            rightB = [(i + (2.5 * positionR)) for i in rightB]
+            rightB = [(i + (2.5 * (positionR - 1))) for i in rightB]
             rightB = [i for i in rightB if i <= int(ktMax)]
             if rightB[-1] != int(ktMax):
                 rightB.append(int(ktMax))
@@ -2349,7 +2359,7 @@ def graphConfig(amass, dframe):
 
             # Prepare left boundary
             yLB = list(line[0:knMax + 1]) + [knMax for point in line if point > knMax]
-            shiftL = data[amass + 'AM']['posLeft'] * 2.5
+            shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
             xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
             xLB = [point + shiftL for point in xLB]
 
@@ -2366,7 +2376,7 @@ def graphConfig(amass, dframe):
 
             # Prepare right boundary
             yRB = list(line[0:knMax + 1]) + [knMax for point in line if point > knMax]
-            shiftR = data[amass + 'AM']['posRight'] * 2.5
+            shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
             xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
             xRB = [point + shiftR for point in xRB]
             # copy first value at 0th index
@@ -2582,7 +2592,7 @@ def graphConfig(amass, dframe):
         close.place(relx=0.72, rely=0.88, relwidth=0.18, relheight=0.07)
 
         editGraph.protocol("WM_DELETE_WINDOW", handleGraphCross)
-        editGraph.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+        setWindowIcon(editGraph)
         editGraph.mainloop()
 
 
@@ -2877,7 +2887,7 @@ def freqPlot():
     dat["bin"] = 0
     dat["freqStatus"] = dat["lowExclude"] + dat["medExclude"] + dat["highExclude"]
 
-    fData = dat[dat["month"] == ((monVar.get()).upper())[:3]][dat["freqStatus"] == 0]
+    fData = dat.loc[(dat["month"] == ((monVar.get()).upper())[:3]) & (dat["freqStatus"] == 0)].copy()
     if data["plane"] == 1:
         flag = data["flag"] = "activeKtKn"
     elif data["plane"] == 2:
@@ -2912,7 +2922,7 @@ def freqZoomed(event):
         loMed = pd.concat([pdLow, pdMed], ignore_index=True)
         dat = pd.concat([loMed, pdHigh], ignore_index=True)
         dat["bin"] = 0
-        fData = dat[dat["month"] == ((monVar.get()).upper())[:3]]
+        fData = dat.loc[dat["month"] == ((monVar.get()).upper())[:3]].copy()
 
         if data["plane"] == 1:
             flag = data["flag"] = "activeKtKn"
@@ -2952,7 +2962,7 @@ def freqZoomed(event):
         plt.show(block=False)
         plt.xlim(-15, 15)
 
-        pLow = fData[fData[flag] == 1][fData["NAM"] == 1]
+        pLow = fData.loc[(fData[flag] == 1) & (fData["NAM"] == 1)]
         if len(pLow) > 0:
             lowMean = list(pLow["bin"])
             lowMean = [int(i) for i in lowMean]
@@ -2960,7 +2970,7 @@ def freqZoomed(event):
             lowMean = lowMean * 20
         else:
             lowMean = [0] * 20
-        pMed = fData[fData[flag] == 1][fData["NAM"] == 2]
+        pMed = fData.loc[(fData[flag] == 1) & (fData["NAM"] == 2)]
         if len(pMed) > 0:
             medMean = list(pMed["bin"])
             medMean = [int(i) for i in medMean]
@@ -2968,7 +2978,7 @@ def freqZoomed(event):
             medMean = medMean * 30
         else:
             medMean = [0] * 30
-        pHigh = fData[fData[flag] == 1][fData["NAM"] == 3]
+        pHigh = fData.loc[(fData[flag] == 1) & (fData["NAM"] == 3)]
         if len(pHigh) > 0:
             highMean = list(pHigh["bin"])
             highMean = [int(i) for i in highMean]
@@ -2982,7 +2992,7 @@ def freqZoomed(event):
         plt.hist((highMean), label="High Airmass", color='blue')
         plt.legend()
         mngr = plt.get_current_fig_manager()
-        mngr.window.wm_iconbitmap(resource_path("dataFiles/qcfit-icon.ico"))
+        setWindowIcon(mngr.window)
 
 
 def density(*args):
@@ -3552,13 +3562,30 @@ def exitProgram():
 def help():
     helpRoot = tk.Toplevel()
 
-    helpRoot.wm_geometry("800x720+500+250")
-    logo = ImageTk.PhotoImage(Image.open(resource_path('dataFiles/disclaimer.png')))
+    helpRoot.wm_geometry("1000x720+500+250")
+    logoSource = Image.open(resource_path('dataFiles/disclaimer_qafit.png'))
+    logoPreview = logoSource.copy()
+    logoPreview.thumbnail((496, 716), Image.Resampling.LANCZOS)
+    logo = ImageTk.PhotoImage(logoPreview)
 
     logoFrame = tk.Frame(helpRoot, bd=2)
     logoFrame.place(relx=0, rely=0, relwidth=0.5, relheight=1)
-    labelImg = tk.Label(logoFrame, image=logo)
+    labelImg = tk.Label(logoFrame, image=logo, bd=0, padx=0, pady=0)
     labelImg.place(relx=0, rely=0, relwidth=1, relheight=1)
+    logoState = {"size": None, "image": logo}
+
+    def resizeDisclaimer(event):
+        size = (event.width, event.height)
+        if size[0] <= 0 or size[1] <= 0 or size == logoState["size"]:
+            return
+
+        resizedImage = logoSource.copy()
+        resizedImage.thumbnail(size, Image.Resampling.LANCZOS)
+        logoState["image"] = ImageTk.PhotoImage(resizedImage)
+        logoState["size"] = size
+        labelImg.configure(image=logoState["image"])
+
+    labelImg.bind("<Configure>", resizeDisclaimer)
     text = "DISCLAIMER FOR \n SOFTWARE SUBMITTED TO OSTI\n\nThis  Software  is  provided by the  National  Renewable  Energy\n" \
            "Laboratory  (\"NREL\"),  which  is operated  by  the  Alliance for\n" \
            " Sustainable Energy, LLC (\"ALLIANCE\") for the " \
@@ -3601,7 +3628,7 @@ def help():
     textLabel = tk.Label(helpRoot, text=text)
     textLabel.place(relx=0.5, rely=0.0, relwidth=0.50, relheight=1)
 
-    helpRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+    setWindowIcon(helpRoot)
     helpRoot.mainloop()
 
 
@@ -3665,12 +3692,12 @@ pdHigh = pd.DataFrame()
 lowFilter = pd.DataFrame()
 medFilter = pd.DataFrame()
 highFilter = pd.DataFrame()
-dcL = np.zeros([3, 6, 20])
-pcL = np.zeros([3, 6, 20])
-dcR = np.zeros([3, 5, 20])
-pcR = np.zeros([3, 5, 20])
-scoreLeft = np.zeros([3, 5, 20])
-scoreRight = np.zeros([3, 5, 20])
+dcL = np.zeros([3, 8, 30])
+pcL = np.zeros([3, 8, 30])
+dcR = np.zeros([3, 7, 30])
+pcR = np.zeros([3, 7, 30])
+scoreLeft = np.zeros([3, 8, 30])
+scoreRight = np.zeros([3, 7, 30])
 iterCount = 0
 dFlag = 0
 filterDict = {'low': lowFilter, 'med': medFilter, 'high': highFilter}
@@ -4189,5 +4216,5 @@ integTimeLabel.place(relx=0.02, rely=0.1, relwidth=0.96, relheight=0.8)
 
 disable(integrationFrame.winfo_children())
 mainRoot.protocol("WM_DELETE_WINDOW", exitProgram)
-mainRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+setWindowIcon(mainRoot)
 mainRoot.mainloop()
