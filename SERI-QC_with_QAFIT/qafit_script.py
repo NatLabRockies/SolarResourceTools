@@ -126,11 +126,10 @@ def getKspace(ip):
     ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < -10000.0), 'KT1'] = -10000.0
     ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < -10000.0), 'KN1'] = -10000.0
 
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < miss), 'KT'] = (ip['KT']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < miss), 'KD'] = (ip['KD']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < miss), 'KN'] = (ip['KN']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1']).map(int)
+    for column, source in (('KT', 'XT'), ('KD', 'XD'), ('KN', 'XN'),
+                           ('KT1', 'KT1'), ('KN1', 'KN1')):
+        mask = (ip['goAhead'] == 1.0) & (ip[source] < miss)
+        ip[column] = ip[column].map(int).where(mask, ip[column])
 
 
 def hitOpen():
@@ -468,6 +467,7 @@ def hitOpen():
         script.calculateZenith(ip, repFreq, measFreq, avg, data["latitude"], data["longitude"],
                                data["elevation"], pressure, temperature)
 
+        ip = ip[(ip["solzen"] < 80) & (ip["ETR"] > 0)].copy()
         getKspace(ip)
 
         script.calculateAirmass(ip)
