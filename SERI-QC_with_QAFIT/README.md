@@ -23,8 +23,17 @@ Advanced features:
 - Save writes the same monthly row format; existing QA0 files without a final semicolon remain readable
 - malformed QA0 files show a `QA0 File Error` dialog with the file path and the invalid field or boundary row; opening and saving stop without overwriting the file
 - boundary-value errors identify the month, air-mass range, field, and offending value; separator errors are reported separately
+- Help -> About displays the entire disclaimer image, resized proportionally to fit its panel when the window is resized
 - QAFIT excludes points with unrounded Kn <= 0.01 (1%) from all K-space plots and automatic curve fitting, in every air-mass range and plane; the Y-axis still starts at zero
 - QAFIT filters input immediately after SZA calculation: only rows with calculated SZA < 80 degrees and positive extraterrestrial irradiance proceed to K-space processing, fitting, and graphing
+- curve positions are one-based: position 1 has no horizontal shift, and each subsequent position adds 2.5 percentage points; plotted boundaries and Configure adjustments use the same shift as automatic fitting
+- fitting area tables include all 8 left curves and 7 right curves at positions 1 through 30; both initial fitting and Configure refitting look up areas by curve and position
+
+Application icons:
+
+QAFIT uses Tk photo icons generated from `dataFiles/qafit-icon.ico` for its windows, including dialogs and plot windows. Native window-icon visibility depends on the desktop environment; macOS does not show ordinary title-bar icons.
+
+The macOS build workflow converts the same artwork to ICNS and embeds it in the `.app` bundle for Finder and Dock. Rebuild and launch the packaged app to see the new bundle icon; running the Python script directly does not set the Finder icon of the Python executable. The Windows build embeds the ICO in the executable.
 
 Testing:
 
