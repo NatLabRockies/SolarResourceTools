@@ -1842,58 +1842,74 @@ def graphConfig(amass, dframe):
             # tempData = tempData[tempData["KT"] > data["x1"]]
 
         def spinCalculation(currAmass, x, y):
+            """
+            Updates Kn Max and Kt Max values for the specified airmass and recalculates boundaries.
+            
+            Args:
+                currAmass: Current airmass ('low', 'med', or 'high')
+                x: Column name for X-axis data (typically 'KT')
+                y: Column name for Y-axis data (typically 'KN')
+            """
             global data, pdLow, pdMed, pdHigh
             line = list(np.linspace(0, 100, 101))
 
+            # Calculate the change in Kn and Kt values from the spin box inputs
             knChange = int(knVal.get()) - int(data[currAmass + "AM"]["knMax"])
             ktChange = int(ktVal.get()) - int(data[currAmass + "AM"]["ktMax"])
 
             # if ktVal.get()==int(data[currAmass + "AM"]["xRB"][ktVal.get]):
             # return
 
+            # Iterate through all airmasses but only update the current one (currAmass)
             for amass, dframe in zip(["low", "med", "high"], [pdLow, pdMed, pdHigh]):
-                if data[amass + "AM"]["knMax"] != 'NA':
+                # IMPORTANT: Only process the currently selected airmass to keep values independent
+                if amass == currAmass and data[amass + "AM"]["knMax"] != 'NA':
+                    # Validate that new values are within acceptable ranges (Kn: 1-99, Kt: 1-130)
                     if 1 <= (int(data[amass + "AM"]["knMax"]) + knChange) <= 99:
                         if 1 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 130:
 
+                            # Update the Kn Max and Kt Max values for the current airmass only
                             data[amass + "AM"]["knMax"] = int(data[amass + "AM"]["knMax"]) + knChange
                             data[amass + "AM"]["ktMax"] = int(data[amass + "AM"]["ktMax"]) + ktChange
 
-                            # renaming for ease
+                            # Cache values for easier reference
                             Kn = int(data[amass + "AM"]["knMax"])
                             Kt = int(data[amass + "AM"]["ktMax"])
 
-                            # Prepare left boundary
+                            # Prepare left boundary curve
+                            # Create Y-axis line up to Kn, then fill rest with Kn value
                             yLB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
+                            # Apply position shift to the left boundary curve
                             shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
                             xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
                             xLB = [point + shiftL for point in xLB]
 
-                            # copy first value at 0th index
+                            # copy first value at 0th index for boundary alignment
                             xLB = [xLB[0], *xLB]
 
-                            # replace the values greater than knmax-th value in curve with knmax-th value
+                            # Trim boundary to Kn points and extend remainder with Kt value
                             xLB = xLB[0:Kn + 1]
                             xLB += [Kt] * (len(line) - len(xLB))
 
-                            # Replace negative values with 0
+                            # Remove negative boundary values (set to 0)
                             zeroesL = [0 for point in xLB if point < 0]
                             xLB = zeroesL + xLB[len(zeroesL):]
 
-                            # Prepare right boundary
+                            # Prepare right boundary curve (similar to left boundary)
                             yRB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
                             shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
                             xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
                             xRB = [point + shiftR for point in xRB]
-                            # copy first value at 0th index
+                            # copy first value at 0th index for boundary alignment
                             xRB = [xRB[0], *xRB]
-                            # replace the values greater than knmax-th value in curve with knmax-th value
+                            # Ensure right boundary does not exceed Kt value
                             xRB = xRB[0:Kt + 1]
                             xRB = [i for i in xRB if i <= Kt]
 
+                            # Extend right boundary to match line length
                             xRB += [xRB[-1]] * (len(line) - len(xRB))
 
-                            # update data dictionary with new boundaries and bounds(lBound and rBound)
+                            # Store calculated boundaries in data dictionary
                             data[amass + 'AM']['xLB'] = xLB
                             data[amass + 'AM']['yLB'] = yLB
                             data[amass + "AM"]["lBound"] = xLB
@@ -1902,55 +1918,59 @@ def graphConfig(amass, dframe):
                             data[amass + 'AM']['yRB'] = yRB
                             data[amass + "AM"]["rBound"] = xRB
 
+                            # Get dataframe excluding marked outliers
                             filtFrame = dframe[dframe[amass + "Exclude"] == 0]
 
-                            # now clear old boundaries and plot new one.
+                            # Refresh plot for the edited airmass
                             if amass == currAmass:
                                 plt.close('all')
                                 plotForEdit(amass, filtFrame, flag, x, y, titleString)
 
-                            # update main canvas plot
+                            # Update main canvas plot to reflect boundary changes
                             plotGraph(filtFrame, amass, locationDict[amass], data["xAxis"], data["yAxis"], data["flag"])
+                            
+                            # Count data points outside left and right boundaries
                             outL = 0
                             outR = 0
                             for yp in range(0, Kn + 1):
-                                # activeCountL = list(df[df["KN"] == y]["KT"])
-                                # activeCountL = len([x for x in activeCountL if x < (ut.curveLeft[shapeL][y] + shiftL)])
-                                # outL = outL + activeCountL
-
+                                # Count points below left boundary for each Kn level
                                 countL = list(filtFrame[filtFrame[y] == yp][x])
                                 countL = [xp for xp in countL if xp < data[amass + "AM"]["xLB"][yp]]
                                 outL = outL + len(countL)
+                                
+                                # Count points above right boundary for each Kn level
                                 countR = list(filtFrame[filtFrame[y] == yp][x])
                                 countR = [xp for xp in countR if xp > data[amass + "AM"]["xRB"][yp]]
                                 outR = outR + len(countR)
-                                # print("at y = ", y, "  ", "out left ", outL, "listL",
-                                # list(filterData[filterData["KN"] == y]["KT"]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
-                                # outR)
 
-                            # count if points are above configured kn max
+                            # Count points above the configured Kn max
                             upCount = filtFrame[filtFrame[flag] == 1]
                             upCount = upCount[upCount[y] > Kn]
                             outUp = upCount.__len__()
 
-                            # updating data dictionary
+                            # Update statistics in data dictionary
+                            # "In" = valid points within boundaries
                             data[amass + "AM"]["In"] = len(filtFrame[filtFrame[flag] == 1]) - (outL + outR + outUp)
-                            # data[amass + "AM"]["Out"] = outL + outR + outUp
+                            # "Active" = total flagged points
                             data[amass + "AM"]["Active"] = len(filtFrame[filtFrame[flag] == 1])
+                            # "Out" = total outliers with percentage
                             if data[amass + "AM"]["Active"] > 1:
                                 data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
                                     ((outL + outR + outUp) / data[amass + "AM"]["Active"]) * 100, 2)) + " %)"
                             else:
                                 data[amass + "AM"]["Out"] = outL + outR + outUp
+                            # "Ignored" = total flagged (excluded) points
                             data[amass + "AM"]["Ignored"] = len(filtFrame[filtFrame[flag] == 0])
+                            # "Total" = total data points
                             data[amass + "AM"]["Total"] = len(filtFrame)
+                            # Calculate error percentages for left and right boundaries
                             if data[amass + "AM"]["Active"] > 1:
                                 data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
                                 data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
 
                             setStats()
 
-            # Now update the current frame values
+            # Update the UI labels to display the current airmass statistics
             InVal.configure(text=data[currAmass + "AM"]["In"])
             OutVal.configure(text=data[currAmass + "AM"]["Out"])
             ActiveVal.configure(text=data[currAmass + "AM"]["Active"])
@@ -2495,7 +2515,7 @@ def graphConfig(amass, dframe):
         ktLabel = tk.Label(kCanvas, text="Kt Max * 100", font=(None, 12))
         ktLabel.place(relx=0.51, rely=0.2, relwidth=0.30, relheight=0.6)
         ktVal = tk.Spinbox(kCanvas, from_=minKt, to=ktMaxSpinVal, textvariable=ktSpinVar,
-                           command=partial(spinCalculation, amass))
+                           command=partial(spinCalculation, amass, x, y))
         ktVal.place(relx=0.82, rely=0.1, relwidth=0.17, relheight=0.8)
         ktVal.delete(0, 'end')
         ktVal.insert(0, int(data[amass + "AM"]["ktMax"]))
