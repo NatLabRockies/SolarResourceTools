@@ -964,6 +964,11 @@ def curvefitting():
         # Store original values for reset functionality
         data[am + "AM"]["knMax_original"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
         data[am + "AM"]["ktMax_original"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
+        # Also store original shape and position values
+        data[am + "AM"]["shapeLeft_original"] = None
+        data[am + "AM"]["posLeft_original"] = None
+        data[am + "AM"]["shapeRight_original"] = None
+        data[am + "AM"]["posRight_original"] = None
 
     for df, am in zip([pdLow, pdMed, pdHigh], amass):
         # reduce maximus according to the airmass
@@ -990,6 +995,10 @@ def curvefitting():
             # now update the data dictionary
             data[am + "AM"]["ktMax"] = ktMax
             data[am + "AM"]["knMax"] = knMax
+            
+            # UPDATE original values when QAFIT calculates them (was zero before)
+            data[am + "AM"]["ktMax_original"] = ktMax
+            data[am + "AM"]["knMax_original"] = knMax
 
 
 def getBoundaries():
@@ -1315,6 +1324,15 @@ def getBoundaries():
             data[amass + "AM"]["Total"] = len(dframe)
             data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
             data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
+
+            # Save original shape and position values (only once when main plot first shown)
+            if data[amass + "AM"]["shapeLeft_original"] is None:
+                data[amass + "AM"]["shapeLeft_original"] = shapeL
+                data[amass + "AM"]["posLeft_original"] = positionL
+                data[amass + "AM"]["shapeRight_original"] = shapeR
+                data[amass + "AM"]["posRight_original"] = positionR
+                print(f"Saved original configuration for {amass.upper()}: "
+                      f"shapeL={shapeL}, posL={positionL}, shapeR={shapeR}, posR={positionR}")
 
             ####################
             # now work on plot
@@ -1643,7 +1661,7 @@ def graphConfig(amass, dframe):
         def reset(dframe, amass, x, y):
             """
             Reset boundaries and spinbox values to their original state from the data dictionary.
-            Recalculates boundary curves and statistics based on original values.
+            Uses the original Kn/Kt max values, shape, and position values saved when the main plot was first shown.
             """
             global data
             plt.close('all')
@@ -1651,23 +1669,29 @@ def graphConfig(amass, dframe):
             outR = 0
             line = list(np.linspace(0, 100, 101))
 
-            # Get ORIGINAL Kn and Kt values (from QA0 file, not modified values)
+            # Get ORIGINAL Kn, Kt, shape, and position values (saved when main plot first shown)
             Kn = int(data[amass + "AM"]["knMax_original"])
             Kt = int(data[amass + "AM"]["ktMax_original"])
+            shapeL = data[amass + 'AM']['shapeLeft_original']
+            posL = data[amass + 'AM']['posLeft_original']
+            shapeR = data[amass + 'AM']['shapeRight_original']
+            posR = data[amass + 'AM']['posRight_original']
 
             # Also update the current values back to originals
             data[amass + "AM"]["knMax"] = Kn
             data[amass + "AM"]["ktMax"] = Kt
+            data[amass + 'AM']['shapeLeft'] = shapeL
+            data[amass + 'AM']['posLeft'] = posL
+            data[amass + 'AM']['shapeRight'] = shapeR
+            data[amass + 'AM']['posRight'] = posR
 
             print("\n" + "="*60)
             print(f"RESET FUNCTION CALLED for {amass.upper()} airmass")
             print("="*60)
             print(f"Original Kn Max: {Kn}")
             print(f"Original Kt Max: {Kt}")
-            print(f"Shape Left: {data[amass + 'AM']['shapeLeft']}")
-            print(f"Shape Right: {data[amass + 'AM']['shapeRight']}")
-            print(f"Position Left: {data[amass + 'AM']['posLeft']}")
-            print(f"Position Right: {data[amass + 'AM']['posRight']}")
+            print(f"Original Shape Left: {shapeL}, Position Left: {posL}")
+            print(f"Original Shape Right: {shapeR}, Position Right: {posR}")
 
             # Reset spinbox values to original values from data dictionary
             knVal.delete(0, 'end')
@@ -1676,13 +1700,20 @@ def graphConfig(amass, dframe):
             ktVal.insert(0, Kt)
             print(f"Spinbox values reset to: Kn={Kn}, Kt={Kt}")
 
-            # RECALCULATE BOUNDARY CURVES (same as spinCalculation)
-            print(f"\nRecalculating boundary curves...")
+            # Reset UI control variables for shape and position
+            cLVar.set(shapeL)
+            cRVar.set(shapeR)
+            pLVar.set(posL)
+            pRVar.set(posR)
+            print(f"UI controls reset to: shapeL={shapeL}, posL={posL}, shapeR={shapeR}, posR={posR}")
+
+            # Recalculate boundary curves using original values
+            print(f"\nRecalculating boundary curves with original values...")
             
             # Prepare left boundary curve
             yLB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-            shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
-            xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
+            shiftL = (posL - 1) * 2.5
+            xLB = utills.curveLeft[shapeL - 1]
             xLB = [point + shiftL for point in xLB]
 
             # copy first value at 0th index for boundary alignment
@@ -1698,8 +1729,8 @@ def graphConfig(amass, dframe):
 
             # Prepare right boundary curve (similar to left boundary)
             yRB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-            shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
-            xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
+            shiftR = (posR - 1) * 2.5
+            xRB = utills.curveRight[shapeR - 1]
             xRB = [point + shiftR for point in xRB]
             # copy first value at 0th index for boundary alignment
             xRB = [xRB[0], *xRB]
@@ -1707,10 +1738,18 @@ def graphConfig(amass, dframe):
             xRB = xRB[0:Kt + 1]
             xRB = [i for i in xRB if i <= Kt]
 
-            # Extend right boundary to match line length
-            xRB += [xRB[-1]] * (len(line) - len(xRB))
+            # Extend right boundary to match line length (with safety check)
+            if len(xRB) > 0:
+                xRB += [xRB[-1]] * (len(line) - len(xRB))
+            else:
+                # Handle edge case where xRB is empty
+                xRB = [0] * len(line)
+            
+            print(f"Boundary data AFTER recalculation:")
+            print(f"Left Boundary (xLB) first 10 values: {xLB[:10]}")
+            print(f"Right Boundary (xRB) first 10 values: {xRB[:10]}")
 
-            # Store recalculated boundaries in data dictionary
+            # Store recalculated/initial boundaries in data dictionary
             data[amass + 'AM']['xLB'] = xLB
             data[amass + 'AM']['yLB'] = yLB
             data[amass + "AM"]["lBound"] = xLB
@@ -1719,13 +1758,9 @@ def graphConfig(amass, dframe):
             data[amass + 'AM']['yRB'] = yRB
             data[amass + "AM"]["rBound"] = xRB
 
-            print(f"Boundary data AFTER recalculation:")
-            print(f"Left Boundary (xLB) first 10 values: {xLB[:10]}")
-            print(f"Right Boundary (xRB) first 10 values: {xRB[:10]}")
-
-            # Plot with recalculated boundaries
+            # Plot with reset boundaries
             plotForEdit(amass, dframe, flag, x, y, titleString)
-            print("Configuration panel plot updated with recalculated boundaries")
+            print("Configuration panel plot updated with reset boundaries")
 
             # Count data points outside left and right boundaries
             for yp in range(0, Kn + 1):
@@ -2130,6 +2165,27 @@ def graphConfig(amass, dframe):
                 data[amass + 'AM']['xRB'] = xRB
                 data[amass + 'AM']['yRB'] = yRB
                 data[amass + "AM"]["rBound"] = xRB
+
+                # Store initial boundary curves ONLY if not already stored (first time graphConfig is opened)
+                # Check if initial curves are still at default [0] value (not yet set)
+                if data[amass + 'AM']['xLB_initial'] == [0]:
+                    print(f"Storing initial curves for {amass.upper()} airmass")
+                    print(f"Kn={Kn}, Kt={Kt}")
+                    print(f"xLB first 10: {xLB[:10]}")
+                    print(f"xRB first 10: {xRB[:10]}")
+                    data[amass + 'AM']['xLB_initial'] = list(xLB)
+                    data[amass + 'AM']['yLB_initial'] = list(yLB)
+                    data[amass + 'AM']['xRB_initial'] = list(xRB)
+                    data[amass + 'AM']['yRB_initial'] = list(yRB)
+                    
+                    # UPDATE original Kn/Kt values if they were loaded as zero from QA0
+                    # This ensures reset uses the QAFIT-calculated values, not the zero values
+                    if int(data[amass + "AM"]["knMax_original"]) == 0 and int(data[amass + "AM"]["ktMax_original"]) == 0:
+                        print(f"Updating knMax_original and ktMax_original from zero to calculated values")
+                        data[amass + "AM"]["knMax_original"] = Kn
+                        data[amass + "AM"]["ktMax_original"] = Kt
+                        print(f"Original values now: Kn={Kn}, Kt={Kt}")
+
 
                 filtFrame = dframe[dframe[amass + "Exclude"] == 0]
 
@@ -3787,13 +3843,13 @@ data = {'qa0Path': '', 'defaultDataFolder': '', 'siteCode': '', 'siteDesc': '', 
         'density': {'low': {'lower': "", 'upper': ""}, 'med': {'lower': "", 'upper': ""},
                     'high': {'lower': "", 'upper': ""}},
         'lowAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
-                  'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
+                  'lBound': [0], 'rBound': [0], 'xLB_initial': [0], 'xRB_initial': [0], 'yLB_initial': [0], 'yRB_initial': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                   'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1},
         'medAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
-                  'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
+                  'lBound': [0], 'rBound': [0], 'xLB_initial': [0], 'xRB_initial': [0], 'yLB_initial': [0], 'yRB_initial': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                   'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1},
         'highAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
-                   'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
+                   'lBound': [0], 'rBound': [0], 'xLB_initial': [0], 'xRB_initial': [0], 'yLB_initial': [0], 'yRB_initial': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                    'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1}}
 
 siteInfo = {}
