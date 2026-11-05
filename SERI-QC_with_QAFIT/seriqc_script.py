@@ -760,7 +760,11 @@ def main():
 
     #################################
 
-    qcData = utills.readFile(path_QA0)
+    try:
+        qcData = utills.readQA0(path_QA0)
+    except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+        messagebox.showerror("QA0 File Error", f"Cannot open {path_QA0}:\n{exc}")
+        return
 
     ipData = pd.read_csv(path_csv)
 
