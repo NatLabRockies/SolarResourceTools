@@ -961,6 +961,9 @@ def curvefitting():
     for am, am_acro in zip(amass, amass_acro):
         data[am + "AM"]["knMax"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
         data[am + "AM"]["ktMax"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
+        # Store original values for reset functionality
+        data[am + "AM"]["knMax_original"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
+        data[am + "AM"]["ktMax_original"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
 
     for df, am in zip([pdLow, pdMed, pdHigh], amass):
         # reduce maximus according to the airmass
@@ -1638,44 +1641,113 @@ def graphConfig(amass, dframe):
             editGraph.withdraw()
 
         def reset(dframe, amass, x, y):
+            """
+            Reset boundaries and spinbox values to their original state from the data dictionary.
+            Recalculates boundary curves and statistics based on original values.
+            """
             global data
             plt.close('all')
             outL = 0
             outR = 0
+            line = list(np.linspace(0, 100, 101))
 
-            ktMax = int(data[amass + "AM"]["knMax"])
+            # Get ORIGINAL Kn and Kt values (from QA0 file, not modified values)
+            Kn = int(data[amass + "AM"]["knMax_original"])
+            Kt = int(data[amass + "AM"]["ktMax_original"])
 
+            # Also update the current values back to originals
+            data[amass + "AM"]["knMax"] = Kn
+            data[amass + "AM"]["ktMax"] = Kt
+
+            print("\n" + "="*60)
+            print(f"RESET FUNCTION CALLED for {amass.upper()} airmass")
+            print("="*60)
+            print(f"Original Kn Max: {Kn}")
+            print(f"Original Kt Max: {Kt}")
+            print(f"Shape Left: {data[amass + 'AM']['shapeLeft']}")
+            print(f"Shape Right: {data[amass + 'AM']['shapeRight']}")
+            print(f"Position Left: {data[amass + 'AM']['posLeft']}")
+            print(f"Position Right: {data[amass + 'AM']['posRight']}")
+
+            # Reset spinbox values to original values from data dictionary
+            knVal.delete(0, 'end')
+            knVal.insert(0, Kn)
+            ktVal.delete(0, 'end')
+            ktVal.insert(0, Kt)
+            print(f"Spinbox values reset to: Kn={Kn}, Kt={Kt}")
+
+            # RECALCULATE BOUNDARY CURVES (same as spinCalculation)
+            print(f"\nRecalculating boundary curves...")
+            
+            # Prepare left boundary curve
+            yLB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
+            shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
+            xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
+            xLB = [point + shiftL for point in xLB]
+
+            # copy first value at 0th index for boundary alignment
+            xLB = [xLB[0], *xLB]
+
+            # Trim boundary to Kn points and extend remainder with Kt value
+            xLB = xLB[0:Kn + 1]
+            xLB += [Kt] * (len(line) - len(xLB))
+
+            # Remove negative boundary values (set to 0)
+            zeroesL = [0 for point in xLB if point < 0]
+            xLB = zeroesL + xLB[len(zeroesL):]
+
+            # Prepare right boundary curve (similar to left boundary)
+            yRB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
+            shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
+            xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
+            xRB = [point + shiftR for point in xRB]
+            # copy first value at 0th index for boundary alignment
+            xRB = [xRB[0], *xRB]
+            # Ensure right boundary does not exceed Kt value
+            xRB = xRB[0:Kt + 1]
+            xRB = [i for i in xRB if i <= Kt]
+
+            # Extend right boundary to match line length
+            xRB += [xRB[-1]] * (len(line) - len(xRB))
+
+            # Store recalculated boundaries in data dictionary
+            data[amass + 'AM']['xLB'] = xLB
+            data[amass + 'AM']['yLB'] = yLB
+            data[amass + "AM"]["lBound"] = xLB
+
+            data[amass + 'AM']['xRB'] = xRB
+            data[amass + 'AM']['yRB'] = yRB
+            data[amass + "AM"]["rBound"] = xRB
+
+            print(f"Boundary data AFTER recalculation:")
+            print(f"Left Boundary (xLB) first 10 values: {xLB[:10]}")
+            print(f"Right Boundary (xRB) first 10 values: {xRB[:10]}")
+
+            # Plot with recalculated boundaries
             plotForEdit(amass, dframe, flag, x, y, titleString)
-            # ax.scatter(xAct, yAct, color='blue')
-            # ax.scatter(xInact, yInact, color='orange')
-            # ax.plot(line, line, color="black")  # line no 0
-            # ax.plot(data[amass + "AM"]["xLB"], data[amass + "AM"]["yLB"], color="green")  # line no 1
-            # ax.plot(data[amass + "AM"]["xRB"], data[amass + "AM"]["yRB"], color="green")  # line no 2
+            print("Configuration panel plot updated with recalculated boundaries")
 
-            # update data dictionary
-            for yp in range(0, ktMax):
-                # activeCountL = list(df[df["KN"] == y][x])
-                # activeCountL = len([x for x in activeCountL if x < (ut.curveLeft[shapeL][y] + shiftL)])
-                # outL = outL + activeCountL
-
+            # Count data points outside left and right boundaries
+            for yp in range(0, Kn + 1):
                 countL = list(dframe[dframe[y] == yp][x])
                 countL = [xp for xp in countL if xp < int(data[amass + "AM"]["xLB"][yp])]
                 outL = outL + len(countL)
                 countR = list(dframe[dframe[y] == yp][x])
                 countR = [xp for xp in countR if xp > int(data[amass + "AM"]["xRB"][yp])]
                 outR = outR + len(countR)
-                # print("at y = ", y, "  ", "out left ", outL, "listL",
-                # list(filterData[filterData["KN"] == y][x]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
-                # outR)
 
-            # count if points are above configured kn max
+            # Count if points are above configured kn max
             upCount = dframe[dframe[flag] == 1]
-            upCount = upCount[upCount[y] > int(knVal.get())]
+            upCount = upCount[upCount[y] > Kn]
             outUp = upCount.__len__()
 
-            # updating data dictionary
+            print(f"\nOutlier counts:")
+            print(f"Points outside Left boundary (outL): {outL}")
+            print(f"Points outside Right boundary (outR): {outR}")
+            print(f"Points above Kn max (outUp): {outUp}")
+
+            # Update statistics in data dictionary
             data[amass + "AM"]["In"] = len(dframe[dframe[flag] == 1]) - (outL + outR + outUp)
-            # data[amass + "AM"]["Out"] = outL + outR + outUp
             data[amass + "AM"]["Active"] = len(dframe[dframe[flag] == 1])
             if data[amass + "AM"]["Active"] > 1:
                 data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
@@ -1687,10 +1759,32 @@ def graphConfig(amass, dframe):
             if data[amass + "AM"]["Active"] > 1:
                 data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
                 data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
+
+            print(f"\nStatistics after reset:")
+            print(f"In: {data[amass + 'AM']['In']}")
+            print(f"Out: {data[amass + 'AM']['Out']}")
+            print(f"Active: {data[amass + 'AM']['Active']}")
+            print(f"Ignored: {data[amass + 'AM']['Ignored']}")
+            print(f"Total: {data[amass + 'AM']['Total']}")
+            print(f"Err_L: {data[amass + 'AM']['Err_L']}%")
+            print(f"Err_R: {data[amass + 'AM']['Err_R']}%")
+
             setStats()
 
-            # update main canvas plot
+            # Update the UI labels to display the reset statistics
+            InVal.configure(text=data[amass + "AM"]["In"])
+            OutVal.configure(text=data[amass + "AM"]["Out"])
+            ActiveVal.configure(text=data[amass + "AM"]["Active"])
+            IgnoredVal.configure(text=data[amass + "AM"]["Ignored"])
+            TotalVal.configure(text=data[amass + "AM"]["Total"])
+            ErrLVal.configure(text=data[amass + "AM"]["Err_L"])
+            ErrRVal.configure(text=data[amass + "AM"]["Err_R"])
+            print("Configuration panel UI labels updated")
+
+            # Update main canvas plot
             plotGraph(dframe, amass, locationDict[amass], data["xAxis"], data["yAxis"], data["flag"])
+            print("Main canvas plot updated")
+            print("="*60 + "\n")
 
         def listPoints(amass, df, x, y):
             """if data["listPageFlag"] == 1:
@@ -3692,13 +3786,13 @@ data = {'qa0Path': '', 'defaultDataFolder': '', 'siteCode': '', 'siteDesc': '', 
         'listPageFlag': 0, 'flag': 'activeKtKn', 'xAxis': 'KT', 'yAxis': 'KN', 'x1': 0, 'x2': 0, 'y1': 0, 'y2': 0,
         'density': {'low': {'lower': "", 'upper': ""}, 'med': {'lower': "", 'upper': ""},
                     'high': {'lower': "", 'upper': ""}},
-        'lowAM': {'ktMax': 0, 'knMax': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
+        'lowAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
                   'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                   'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1},
-        'medAM': {'ktMax': 0, 'knMax': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
+        'medAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
                   'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                   'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1},
-        'highAM': {'ktMax': 0, 'knMax': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
+        'highAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
                    'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                    'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1}}
 
