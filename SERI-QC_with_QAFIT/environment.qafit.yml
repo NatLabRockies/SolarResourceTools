@@ -1,4 +1,4 @@
-name: qcfit-macos
+name: qafit
 channels:
   - conda-forge
 dependencies:

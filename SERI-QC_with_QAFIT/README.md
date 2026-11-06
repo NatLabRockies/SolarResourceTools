@@ -11,7 +11,7 @@ QCFIT displays a Kt versus Kn scatter plot of the data and provides several opti
 
 Advanced features:
 - data formatting is not required for input file (illustrated in instruction manual.) 
-- included elevation as a parameter while creating a new QC0 file
+- included elevation as a parameter while creating a new QA0 file
 - covers extra points with Kt and Kn >=0
 - displays the points those fails by 3-component filtering 
 - data point list saved as *.csv and *.txt

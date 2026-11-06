@@ -1,0 +1,96 @@
+name: Build QAFIT executables
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - ".github/workflows/build.yml"
+      - "SERI-QC_with_QAFIT/**"
+    tags:
+      - "v*"
+  pull_request:
+    paths:
+      - ".github/workflows/build.yml"
+      - "SERI-QC_with_QAFIT/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: QAFIT-windows
+            release_asset: SERI-QC_with_QAFIT/dist/QAFIT-windows.exe
+          - os: macos-latest
+            artifact: QAFIT-macos
+            release_asset: SERI-QC_with_QAFIT/dist/QAFIT-macos.zip
+    defaults:
+      run:
+        working-directory: SERI-QC_with_QAFIT
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.24.4 pandas==1.5.3 scipy==1.10.1 matplotlib==3.7.2 Pillow==9.5.0 pytz seaborn pyinstaller
+
+      - name: Build Windows application
+        if: runner.os == 'Windows'
+        run: >-
+          python -m PyInstaller --noconfirm --clean --windowed --onefile
+          --name QAFIT-windows --icon dataFiles/qcfit-icon.ico
+          --add-data "dataFiles;dataFiles" qafit_script.py
+
+      - name: Build macOS application
+        if: runner.os == 'macOS'
+        run: >-
+          python -m PyInstaller --noconfirm --clean --windowed --onedir
+          --name QAFIT-macos --add-data "dataFiles:dataFiles" qafit_script.py
+
+      - name: Package macOS application
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/QAFIT-macos.app dist/QAFIT-macos.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.release_asset }}
+          if-no-files-found: error
+          compression-level: 6
+
+  release:
+    name: Publish GitHub Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download platform builds
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-assets/*

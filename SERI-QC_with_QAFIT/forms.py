@@ -10,6 +10,7 @@ import tkinter as tk
 import os, sys
 import tkinter.filedialog
 from tkinter import messagebox
+from app_paths import resource_path
 
 
 def thankYou():
@@ -25,7 +26,7 @@ def thankYou():
     tkinter.Label(root, text="Thank you! \n\n\n output file has been created at : \n\n " + location,
                   justify=tkinter.CENTER, padx=20, pady=40).pack()
     tkinter.Button(root, text="Close", command=close, pady=10).pack()
-    root.iconbitmap('dataFiles/seriqc-icon.ico')
+    root.iconbitmap(resource_path('dataFiles/seriqc-icon.ico'))
     root.mainloop()
 
 
@@ -52,9 +53,9 @@ def getPath(format):
     root.attributes('-topmost', False)
 
     path = ""
-    if format == "qc0":
-        path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload QC0 file',
-                                                  filetypes=(("QC0 files", "*.QC0"), ("all files", "*.*")))
+    if format == "qa0":
+        path = tkinter.filedialog.askopenfilename(parent=root, initialdir="/", title='Upload QA0 file',
+                                                  filetypes=(("QA0 files", "*.QA0"), ("all files", "*.*")))
     if format == "csv":
         path = tkinter.filedialog.askopenfilename(parent=root, initialdir=os.getcwd(), title='Upload CSV file',
                                                   filetypes=(("csv files", "*.csv"), ("all files", "*.*")))
@@ -155,7 +156,7 @@ def getData():
     submitButton.pack()
     submitButton.place(x=365, y=295)
     submitButton.config(width=10)
-    root.iconbitmap('dataFiles/seriqc-icon.ico')
+    root.iconbitmap(resource_path('dataFiles/seriqc-icon.ico'))
     root.mainloop()
 
 
@@ -255,7 +256,7 @@ def getEntry(caption, Note, defaultVal):
     submitButton.place(x=300, y=110)
     submitButton.config(width=10)
     submitButton.configure(background='blue')
-    root.iconbitmap('dataFiles/seriqc-icon.ico')
+    root.iconbitmap(resource_path('dataFiles/seriqc-icon.ico'))
     root.mainloop()
 
 
@@ -335,5 +336,5 @@ def getParams():
     submitButton.place(x=300, y=230)
     submitButton.config(width=10)
     submitButton.configure(background='blue')
-    root.iconbitmap('dataFiles/seriqc-icon.ico')
+    root.iconbitmap(resource_path('dataFiles/seriqc-icon.ico'))
     root.mainloop()
