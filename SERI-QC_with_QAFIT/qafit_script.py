@@ -907,7 +907,11 @@ def curvefitting():
     ip.loc[(ip["KT"] > ip["KN1"]), "activeKtKd"] = 1
     ip.loc[(ip["KT1"] > ip["KN"]), "activeKnKd"] = 1
 
-    # ignore negative values (allow KT and KN up to 999)
+    # ignore negative values (allow KT up to 130 and KN up to 99)
+    ip.loc[(ip["KT"] > 130), "activeKtKn"] = 0
+    ip.loc[(ip["KT"] > 130), "activeKtKd"] = 0
+    ip.loc[(ip["KN"] > 99), "activeKtKn"] = 0
+    ip.loc[(ip["KN"] > 99), "activeKnKd"] = 0
     ip.loc[(ip["KT"] < 0), "activeKtKn"] = 0
     ip.loc[(ip["KT"] < 0), "activeKtKd"] = 0
     ip.loc[(ip["KT"] < 0), "activeKnKd"] = 0
@@ -1326,6 +1330,7 @@ def getBoundaries():
                 data[amass + "AM"]["shapeRight_original"] = shapeR
                 data[amass + "AM"]["posRight_original"] = positionR
                 print(f"Saved original configuration for {amass.upper()}: "
+                      f"KnMax={knMax}, KtMax={ktMax}, "
                       f"shapeL={shapeL}, posL={positionL}, shapeR={shapeR}, posR={positionR}")
 
             ####################
@@ -1624,7 +1629,7 @@ def graphConfig(amass, dframe):
     else:
         data["editWinFlag"] = 1
 
-        ktMaxSpinVal = 999
+        ktMaxSpinVal = 130
         minKt = data[amass + "AM"]["xLB"][int(data[amass + "AM"]["yLB"][-1])]
         knMaxSpinVal = 99
 
@@ -1987,9 +1992,9 @@ def graphConfig(amass, dframe):
             for amass, dframe in zip(["low", "med", "high"], [pdLow, pdMed, pdHigh]):
                 # IMPORTANT: Only process the currently selected airmass to keep values independent
                 if amass == currAmass and data[amass + "AM"]["knMax"] != 'NA':
-                    # Validate that new values are within acceptable ranges (Kn: 0-99, Kt: 0-999)
+                    # Validate that new values are within acceptable ranges (Kn: 0-99, Kt: 0-130)
                     if 0 <= (int(data[amass + "AM"]["knMax"]) + knChange) <= 99:
-                        if 0 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 999:
+                        if 0 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 130:
 
                             # Update the Kn Max and Kt Max values for the current airmass only
                             data[amass + "AM"]["knMax"] = int(data[amass + "AM"]["knMax"]) + knChange
