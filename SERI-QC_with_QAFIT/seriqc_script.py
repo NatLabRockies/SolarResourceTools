@@ -709,7 +709,6 @@ def calculateAirmass(ipData):
 
     ipData['NAM'] = 0
     ipData.loc[(ipData['goAhead'] == 1), 'NAM'] = 1
-
     ipData.loc[(ipData['airMass'] >= 1.25) & (ipData['airMass'] < 2.5), 'NAM'] = 2
     ipData.loc[(ipData['airMass'] >= 2.5), 'NAM'] = 3
 
