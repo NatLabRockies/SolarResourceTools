@@ -37,6 +37,16 @@ import re
 import math
 
 
+def setWindowIcon(window):
+    with Image.open(resource_path('dataFiles/qafit-icon.ico')) as source:
+        icons = [
+            ImageTk.PhotoImage(source.resize((size, size), Image.Resampling.LANCZOS), master=window)
+            for size in (32, 128)
+        ]
+    window.iconphoto(False, *icons)
+    window._qafitIconImages = icons
+
+
 def getFilePath():
     global data
     root = tk.Tk()
@@ -75,7 +85,15 @@ def getQA0FilePath():
 
 
 def getKspace(ip):
+    """
+    Filtering ip based on zenith angle and other criteria to calculate k-space parameters.
+    Reference: WinQAF.c (line 2513 -)
+    """
+    print("Starting getKspace function")
     miss = 9900.0
+    ZEN_MAX = 80.0
+    XMAX = 130
+    YMAX = 100
     ip['XT'] = -999.0
     ip['XN'] = -999.0
     ip['XD'] = -999.0
@@ -86,6 +104,7 @@ def getKspace(ip):
     ip['KD'] = -999.0
 
     ip['goAhead'] = 1.0
+    ip.loc[(ip["solzen"] >= ZEN_MAX), 'goAhead'] = 0.0
     ip.loc[(ip['ETR'] == 0.0), 'goAhead'] = 0.0
     Global = ip[ip.columns[2]]
     Direct = ip[ip.columns[3]]
@@ -114,23 +133,12 @@ def getKspace(ip):
     ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Global < miss), 'XT'] = Global / ip['ETR']
     ip.loc[(ip['goAhead'] == 1.0) & (Diffuse >= miss) & (Global >= miss), 'XT'] = miss
 
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < miss), 'KT'] = (ip['XT'] * 100)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < miss), 'KD'] = (ip['XD'] * 100)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < miss), 'KN'] = (ip['XN'] * 100)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1'] * 100)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1'] * 100)
-
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < -10000.0), 'KT'] = -10000.0
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < -10000.0), 'KD'] = -10000.0
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < -10000.0), 'KN'] = -10000.0
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < -10000.0), 'KT1'] = -10000.0
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < -10000.0), 'KN1'] = -10000.0
-
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < miss), 'KT'] = (ip['KT']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < miss), 'KD'] = (ip['KD']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < miss), 'KN'] = (ip['KN']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1']).map(int)
-    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1']).map(int)
+    # Round and clamp each Kspace value to its valid range
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] != miss), 'KT'] = round(ip['XT'] * 100).clip(lower=0, upper=XMAX)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] != miss), 'KD'] = round(ip['XD'] * 100)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] != miss), 'KN'] = round(ip['XN'] * 100).clip(lower=0, upper=YMAX)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] != miss), 'KT1'] = round(ip['KT1'] * 100).clip(lower=0, upper=XMAX)
+    ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] != miss), 'KN1'] = round(ip['KN1'] * 100).clip(lower=0, upper=YMAX)
 
 
 def hitOpen():
@@ -345,7 +353,7 @@ def hitOpen():
         nsOKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
         nsCancelButton = tk.Button(nsFrame, text="Cancel", command=nsCancel)
         nsCancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
-        newSiteRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+        setWindowIcon(newSiteRoot)
         newSiteRoot.protocol("WM_DELETE_WINDOW", nsCancel)
 
         newSiteRoot.mainloop()
@@ -354,8 +362,12 @@ def hitOpen():
         global data, boundary, siteInfo
         qa0Path = getQA0FilePath()
         if len(qa0Path) > 1:
+            try:
+                existQA0Data = utills.readQA0(qa0Path)
+            except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+                messagebox.showerror("QA0 File Error", f"Cannot open {qa0Path}:\n{exc}")
+                return
             data["qa0Path"] = qa0Path
-            existQA0Data = utills.readFile(qa0Path)
             index = existQA0Data.find("Site Identifier:")
             string = existQA0Data[index + len("Site Identifier:"):]
             siteID = string.split("\n")
@@ -429,6 +441,11 @@ def hitOpen():
     def okOS():
         global ip, data, plotData, pdLow, pdMed, pdHigh, boundary, iterCount
 
+        try:
+            qa0dat = utills.readQA0(data["qa0Path"])
+        except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+            messagebox.showerror("QA0 File Error", f"Cannot open {data['qa0Path']}:\n{exc}")
+            return
         if iterCount > 0:
             iterCount = 0
             answer = messagebox.askyesno("Save Changes", "Do you want to save changes?")
@@ -437,32 +454,51 @@ def hitOpen():
                 save(monthToSave)
             resetStats()
         # read QA0 file
-        qa0dat = utills.readFile(data["qa0Path"])
         boundary = utills.getBoundariesTable(qa0dat)
         temp = boundary
-        data["integration"] = int(integVar.get())
+        data["integration"] = int(integVar.get())       # Verified that it is set as the one that user entered in the beginning.
 
         # calculate zenith, K-space vars and airmasses
-
         measFreq = 1  # assuming measuring frequency is 1 minute due the Averaging method of Solar Zenith calculation
         repFreq = int(data["integration"])
         avg = "No"  # as its not being utilised due the Averaging method of Solar Zenith calculation
 
-        pressure = [item for item in ip.columns if 'Pressure' in item]
-        if len(pressure) == 0:
-            pressure = (101325 * (1 - (2.25577 * 10 ** (-5)) * data["elevation"]) ** 5.25588) / 100
-        else:
-            pressure = statistics.mean(ip[pressure])
+        pressure = 1013.25 * pow(1 - 2.25577 * pow(10,-5) * data["elevation"],5.25588)
 
-        temperature = 12
+        temperature = 11
         script.splitDate(ip, int(data["timeZone"]))
         script.utcCoversion(ip, int((data["timeZone"])), repFreq, measFreq)
         script.calculateZenith(ip, repFreq, measFreq, avg, data["latitude"], data["longitude"],
                                data["elevation"], pressure, temperature)
 
-        getKspace(ip)
+        # Save solar geometry calculations to CSV for validation
+        print("================================================================================")
+        print("DEBUG: SAVING SOLAR GEOMETRY DATA TO CSV")
+        print("================================================================================")
+        solar_geometry_output = ip[['date-UTC', 'ETR', 'ETRN', 'solzen']].copy()
+        csv_filename = 'solar_geometry_validation.csv'
+        solar_geometry_output.to_csv(csv_filename, index=False)
+        print(f"DEBUG: Saved solar geometry data to '{csv_filename}'")
+        print(f"DEBUG: Total rows: {len(solar_geometry_output)}")
+        print(f"DEBUG: Columns: {list(solar_geometry_output.columns)}")
+        print(f"DEBUG: ETR statistics:")
+        print(f"  Min: {solar_geometry_output['ETR'].min():.6f}")
+        print(f"  Max: {solar_geometry_output['ETR'].max():.6f}")
+        print(f"  Mean: {solar_geometry_output['ETR'].mean():.6f}")
+        print(f"DEBUG: ETRN statistics:")
+        print(f"  Min: {solar_geometry_output['ETRN'].min():.6f}")
+        print(f"  Max: {solar_geometry_output['ETRN'].max():.6f}")
+        print(f"  Mean: {solar_geometry_output['ETRN'].mean():.6f}")
+        print(f"DEBUG: Solar Zenith Angle statistics:")
+        print(f"  Min: {solar_geometry_output['solzen'].min():.6f}")
+        print(f"  Max: {solar_geometry_output['solzen'].max():.6f}")
+        print(f"  Mean: {solar_geometry_output['solzen'].mean():.6f}")
+        print("================================================================================\n")
 
+        getKspace(ip)
+        
         script.calculateAirmass(ip)
+
         # Add columns for density:
         ip['density1'] = 0
         ip['density2'] = 0
@@ -576,7 +612,7 @@ def hitOpen():
     cancelOSButton.place(relx=0.77, rely=0.79, relwidth=0.20, relheight=0.1)
 
     openRoot.protocol("WM_DELETE_WINDOW", mainRoot.deiconify)
-    openRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+    setWindowIcon(openRoot)
     openRoot.mainloop()
 
 
@@ -585,7 +621,11 @@ def updateSiteInfo(*args):
     if optVar.get() == "select a site":
         return
     else:
-        existQA0Data = utills.readFile(siteInfo[optVar.get()])
+        try:
+            existQA0Data = utills.readQA0(siteInfo[optVar.get()])
+        except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+            messagebox.showerror("QA0 File Error", f"Cannot open {siteInfo[optVar.get()]}:\n{exc}")
+            return
         latitude = utills.pickValue(existQA0Data, 'Latitude:')
         longitude = utills.pickValue(existQA0Data, 'Longitude:')
         elevation = float(utills.pickValue(existQA0Data, 'Elevation:'))
@@ -620,8 +660,13 @@ def hitEdit():
             save(monthToSave)
 
     qa0Path = getQA0FilePath()
-    if len(qa0Path) > 1:
-        QA0Data = utills.readFile(qa0Path)
+    if len(qa0Path) <= 1:
+        return
+    try:
+        QA0Data = utills.readQA0(qa0Path)
+    except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+        messagebox.showerror("QA0 File Error", f"Cannot open {qa0Path}:\n{exc}")
+        return
 
     index = QA0Data.find("Site Identifier:")
     string = QA0Data[index + len("Site Identifier:"):]
@@ -629,7 +674,7 @@ def hitEdit():
     siteinf = siteinf[0].split(",")
 
     siteid = siteinf[0]
-    siteDesc = siteinf[1]
+    siteDesc = ",".join(siteinf[1:])
     latitude = utills.pickValue(QA0Data, 'Latitude:')
     longitude = utills.pickValue(QA0Data, 'Longitude:')
     elevation = float(utills.pickValue(QA0Data, 'Elevation:'))
@@ -835,7 +880,7 @@ def hitEdit():
     editQA0OKButton.place(relx=0.50, rely=0.90, relwidth=0.20, relheight=0.05)
     editQA0CancelButton = tk.Button(editQA0Frame, text="Cancel", command=editQA0Cancel)
     editQA0CancelButton.place(relx=0.75, rely=0.90, relwidth=0.20, relheight=0.05)
-    editQA0Root.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+    setWindowIcon(editQA0Root)
     editQA0Root.protocol("WM_DELETE_WINDOW", editQA0Cancel)
     editQA0Root.mainloop()
 
@@ -858,6 +903,7 @@ def plotUpdateThroughMonth(*args):
     data["month"] = monVar.get()
     data["year"] = yearVar.get()
     data["threshold"] = float(threshVar.get())
+    
     curvefitting()
     getBoundaries()
     density()
@@ -880,13 +926,13 @@ def curvefitting():
     ip.loc[(ip["KT"] > ip["KN1"]), "activeKtKd"] = 1
     ip.loc[(ip["KT1"] > ip["KN"]), "activeKnKd"] = 1
 
-    # ignore negative and values more than 100
-    ip.loc[(ip["KT"] > 100), "activeKtKn"] = 0
-    ip.loc[(ip["KT"] > 100), "activeKtKd"] = 0
-    ip.loc[(ip["KT"] > 100), "activeKnKd"] = 0
+    # ignore negative values (allow KT up to 130 and KN up to 99)
+    ip.loc[(ip["KT"] > 130), "activeKtKn"] = 0
+    ip.loc[(ip["KT"] > 130), "activeKtKd"] = 0
+    ip.loc[(ip["KT"] > 130), "activeKnKd"] = 0
     ip.loc[(ip["KN"] > 100), "activeKtKn"] = 0
-    ip.loc[(ip["KN"] > 100), "activeKtKd"] = 0
     ip.loc[(ip["KN"] > 100), "activeKnKd"] = 0
+    ip.loc[(ip["KN"] > 100), "activeKtKd"] = 0
     ip.loc[(ip["KT"] < 0), "activeKtKn"] = 0
     ip.loc[(ip["KT"] < 0), "activeKtKd"] = 0
     ip.loc[(ip["KT"] < 0), "activeKnKd"] = 0
@@ -899,10 +945,16 @@ def curvefitting():
     ip["bin"] = ""
     ip["residual"] = ip["XT"] - ip["XN"] - ip["XD"]
 
-    plotData = ip[ip["monthName"] == monVar.get()].copy()
+    # Use the unrounded Kn ratio; KN is truncated to integer percent.
+    # IMPORTANT: For max value extraction, use UNFILTERED data (matching C program behavior)
+    plotDataUnfiltered = ip[ip["monthName"] == monVar.get()].copy()
+    
+    # For curve fitting visualization, use FILTERED data with KN > 1
+    plotData = plotDataUnfiltered[(plotDataUnfiltered["KN"] > 1)].copy()     # This is true
+    print("plotDataUnfiltered vs plotData: ", len(plotDataUnfiltered), "vs", len(plotData))
 
     # seperate data based on airmasses
-
+    # Use FILTERED data for curve fitting/visualization
     pdLow = plotData[plotData["NAM"] == 1].copy()
     pdMed = plotData[plotData["NAM"] == 2].copy()
     pdHigh = plotData[plotData["NAM"] == 3].copy()
@@ -927,12 +979,24 @@ def curvefitting():
 
     # calculate max values of K space for each airmass
     # Read corresponding columns first
-    month_content = boundary[boundary["month"] == data["month"][:3].upper()] 
+    month_content = boundary[boundary["month"] == data["month"][:3].upper()]
     amass = ["low", "med", "high"]
     amass_acro = ["LA", "MA", "HA"]
     for am, am_acro in zip(amass, amass_acro):
-        data[am + "AM"]["knMax"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
-        data[am + "AM"]["ktMax"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
+        kn_val = int(list(month_content[am_acro + "_MAX_KN"])[0])
+        kt_val = int(list(month_content[am_acro + "_MAX_KT"])[0])
+        print(f"DEBUG: {am.upper()} airmass - Read from boundary file: MAX_KN={kn_val}, MAX_KT={kt_val}")
+        data[am + "AM"]["knMax"] = kn_val
+        data[am + "AM"]["ktMax"] = kt_val
+        # Store original values for reset functionality
+        data[am + "AM"]["knMax_original"] = kn_val
+        data[am + "AM"]["ktMax_original"] = kt_val
+        # Also store original shape and position values
+        data[am + "AM"]["shapeLeft_original"] = None
+        data[am + "AM"]["posLeft_original"] = None
+        data[am + "AM"]["shapeRight_original"] = None
+        data[am + "AM"]["posRight_original"] = None
+    print(f"{'='*80}\n")
 
     for df, am in zip([pdLow, pdMed, pdHigh], amass):
         # reduce maximus according to the airmass
@@ -945,12 +1009,17 @@ def curvefitting():
             for k in (["KT", "KN"]):
                 df = df[df[flag] == 1]
                 tempList = list(set(df[k]))
-
                 if len(tempList) > 0:
-                    tempList = [i for i in tempList if 0 < i < 100]
-                    maxVal = int(max(tempList))
+                    tempList = [i for i in tempList if 0 < i < 1000]
+                    
+                    if len(tempList) > 0:
+                        maxVal_original = max(tempList)
+                        maxVal = round(maxVal_original + 1)       # autofit (line 637 to add 1 to the max value) from qaf_bdnry.c
+                    else:
+                        maxVal = "NA"
                 else:
                     maxVal = "NA"
+                    
                 if k == "KT":
                     ktMax = maxVal
                 elif k == "KN":
@@ -959,6 +1028,10 @@ def curvefitting():
             # now update the data dictionary
             data[am + "AM"]["ktMax"] = ktMax
             data[am + "AM"]["knMax"] = knMax
+            
+            # UPDATE original values when QAFIT calculates them (was zero before)
+            data[am + "AM"]["ktMax_original"] = ktMax
+            data[am + "AM"]["knMax_original"] = knMax
 
 
 def getBoundaries():
@@ -1009,6 +1082,10 @@ def getBoundaries():
         # giving shortcuts
         ktMax = data[amass + "AM"]["ktMax"]
         knMax = data[amass + "AM"]["knMax"]
+        
+        print(f"\nDEBUG: {amass.upper()} airmass - Starting boundary calculation")
+        print(f"DEBUG: {amass.upper()} - knMax={knMax}, ktMax={ktMax}")
+        print(f"DEBUG: {amass.upper()} - Active data points: {len(dframe[dframe[flag] == 1])}")
 
         # get/calculate  boundaries if ktMax or knMax are not NA. (i,e. data frame is not empty)
 
@@ -1081,6 +1158,10 @@ def getBoundaries():
             # updating dictionary
             data[amass + "AM"]["activeLBound"] = activeLBound
             data[amass + "AM"]["activeRBound"] = activeRBound
+            
+            print(f"DEBUG: {amass.upper()} - Boundary arrays built:")
+            print(f"DEBUG: {amass.upper()} - activeLBound length: {len(activeLBound)} (knMax+1 = {int(knMax)+1})")
+            print(f"DEBUG: {amass.upper()} - activeRBound length: {len(activeRBound)} (knMax+1 = {int(knMax)+1})")
 
             if (shapeL == 0):  # Assumption is we have both the boundaries (left and right) or none
                 # count active points on the left of curve.
@@ -1090,8 +1171,8 @@ def getBoundaries():
                 scoreL = 1000
                 scoreR = 1000
 
-                for curve in range(0, 6):
-                    for position in range(1, 21):
+                for curve in range(0, 8):
+                    for position in range(1, 31):
                         shift = ((position - 1) * 2.5)
                         dataCountL = 0
                         dataCountR = 0
@@ -1102,51 +1183,40 @@ def getBoundaries():
                         pointsL = zeroesL + pointsL[len(zeroesL):]
 
                         # Find the right curve with shift
-                        if curve < 5:
+                        if curve < 7:
                             pointsR = ut.curveRight[curve]
                             pointsR = [(point) + shift for point in pointsR]
 
                         for y in range(0, int(knMax) + 1):
                             activeCountL = list(df[df["KN"] == y]["KT"])
                             activeCountL = len([x for x in activeCountL if x < (pointsL[y])])
-                            """# for debugging purpose
-                            if curve == 3:
-                                if position == 5:
-                                    print("for curve:4-5 at y = ", y,"point on curve is ", (ut.curveLeft[curve][y])+shift, " left out = ", activeCountL, " and points are ",
-                                          [x for x in (list(df[df["KN"] == y]["KT"])) if x < ((ut.curveLeft[curve][y]) + shift)])
-
-                            # delete till here"""
                             dataCountL = dataCountL + activeCountL
 
-                            """if curve == 1:
-                                if position == 14:
-                                    print("")"""
-                            if curve < 5:
+                            if curve < 7:
                                 activeCountR = list(df[df["KN"] == y]["KT"])
                                 activeCountR = len([x for x in activeCountR if x > (pointsR[y])])
-                                """# for debugging purpose
-
-                                if curve == 1:
-                                    if position == 14:
-                                        print("for curve:2-14 at y = ", y,"point on curve is ", (ut.curveRight[curve][y])+shift, " right out = ", activeCountL, " and points are ",
-                                              [x for x in (list(df[df["KN"] == y]["KT"])) if x > ((ut.curveRight[curve][y]) + shift)])
-
-                                # delete till here"""
                                 dataCountR = dataCountR + activeCountR
 
                         pixCountL = np.sum(abs(np.array(pointsL[:knMax + 1]) - np.array(activeLBound)))
                         pcL[dim, curve, position - 1] = pixCountL
-                        pixCountL = pixCountL / (areaLeft.iloc[int(knMax) - 1][(curve * 20) + position])
+                        
+                        # DEBUG: Check area table access
+                        area_index = int(knMax) - 1
+                        if curve == 0 and position == 1:  # Only print once per airmass
+                            print(f"DEBUG: {amass.upper()} - Area lookup: areaLeft.loc[{area_index}, '{curve + 1}-{position}']")
+                            print(f"DEBUG: {amass.upper()} - areaLeft has indices 0-{areaLeft.shape[0]-1}, trying to access {area_index}")
+                        
+                        pixCountL = pixCountL / areaLeft.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
 
                         dcL[dim, curve, position - 1] = dataCountL
                         lcount = dataCountL
                         dataCountL = dataCountL / len(df)
                         scoreNowL = pixCountL + dataCountL
 
-                        if curve < 5:
+                        if curve < 7:
                             pixCountR = np.sum(abs(np.array(pointsR[:knMax + 1]) - np.array(activeRBound)))
                             pcR[dim, curve, position - 1] = pixCountR
-                            pixCountR = pixCountR / (areaRight.iloc[int(knMax) - 1][(curve * 20) + position])
+                            pixCountR = pixCountR / areaRight.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
                             dcR[dim, curve, position - 1] = dataCountR
                             rcount = dataCountR
                             dataCountR = dataCountR / len(df)
@@ -1159,46 +1229,13 @@ def getBoundaries():
                             shapeL = curve + 1
                             positionL = position
                             outL = lcount
-                        if curve < 5:
+                        if curve < 7:
                             if scoreNowR < scoreR:
                                 scoreR = scoreNowR
                                 shapeR = curve + 1
                                 positionR = position
                                 outR = rcount
 
-                        # print("curve : ", shapeL, " position : ", positionL, " out left ", outL, "listL",
-                        # list(df[df["KN"] == y]["KT"]), "curvePoint", (ut.curveLeft[shapeL][y] + shiftL),
-                        #  " out right ", outR)
-
-                """if (shapeR == 0): #if activating then align 4 spaces to the left
-                            # count active points on the right of curve.
-                            df = dframe[dframe[flag] == 1]
-
-                            posCountlistRight = []  # a list to store active data points for all 120 curves.
-                            scoreR = 1000
-                            for curve in range(0, 5):
-                                for position in range(1, 21):
-                                    dataCountR = 0
-                                    for y in range(0, int(knMax)):
-                                        activeCountR = list(df[df["KN"] == y]["KT"])
-                                        activeCountR = len([x for x in activeCountR if x > ut.curveRight[curve][y]])
-                                        #activeCount = len([x for x in activeCount if x <= int(ktMax)])
-
-                                        dataCountR = dataCountR + activeCountR
-                                    posCountlistRight.append(dataCountR)
-                                    scoreNowR = dataCountR / (areaRight.iloc[int(knMax) - 1][(curve * 20) + position])
-                                    print("curve : ", curve, " at position : ", position, " has a score for right ", y, " is : ",
-                                          scoreNowR)
-                                    if scoreNowR < scoreR:
-                                        scoreR = scoreNowR
-                                        bestShapeR = curve + 1
-                                        bestposR = position
-                                        outR = dataCountR
-
-                            shapeR = data[amass + "AM"]["shapeRight"] = bestShapeR
-
-
-                            positionR = data[amass + "AM"]["posRight"] = bestposR"""
             else:
                 # Calculating shifts
                 shiftL = ((positionL - 1) * 2.5)
@@ -1236,7 +1273,7 @@ def getBoundaries():
 
             leftB = list(ut.curveLeft[shapeL - 1])
             leftB = leftB[0:int(knMax)]  # get all the points of curve upto Ymax
-            leftB = [(i + (2.5 * positionL)) for i in leftB]
+            leftB = [(i + (2.5 * (positionL - 1))) for i in leftB]
 
             if leftB[-1] != int(ktMax):
                 leftB.append(int(ktMax))
@@ -1252,7 +1289,7 @@ def getBoundaries():
 
             rightB = list(ut.curveRight[shapeR - 1])
             rightB = rightB[0:int(knMax)]  # get all the points of curve upto Ymax
-            rightB = [(i + (2.5 * positionR)) for i in rightB]
+            rightB = [(i + (2.5 * (positionR - 1))) for i in rightB]
             rightB = [i for i in rightB if i <= int(ktMax)]
             if rightB[-1] != int(ktMax):
                 rightB.append(int(ktMax))
@@ -1285,6 +1322,16 @@ def getBoundaries():
             data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
             data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
 
+            # Save original shape and position values (only once when main plot first shown)
+            if data[amass + "AM"]["shapeLeft_original"] is None:
+                data[amass + "AM"]["shapeLeft_original"] = shapeL
+                data[amass + "AM"]["posLeft_original"] = positionL
+                data[amass + "AM"]["shapeRight_original"] = shapeR
+                data[amass + "AM"]["posRight_original"] = positionR
+                print(f"Saved original configuration for {amass.upper()}: "
+                      f"KnMax={knMax}, KtMax={ktMax}, "
+                      f"shapeL={shapeL}, posL={positionL}, shapeR={shapeR}, posR={positionR}")
+
             ####################
             # now work on plot
             ####################
@@ -1305,22 +1352,9 @@ def getBoundaries():
             canvas.get_tk_widget().place(relx=0, rely=0, relwidth=1, relheight=1)
             canvas.draw()
 
-            """if location == lowCanvas:
-                lowButton = tk.Button(location, text="Configure", font=(None, 10), command=lowConfig,
-                                      state=tk.DISABLED)
-                lowButton.place(relx=.75, rely=0.015, relwidth=0.22, relheight=0.1)
-            elif location == medCanvas:
-                medButton = tk.Button(location, text="Configure", font=(None, 10), command=medConfig,
-                                      state=tk.DISABLED)
-                medButton.place(relx=.75, rely=0.015, relwidth=0.22, relheight=0.1)
-            elif location == highCanvas:
-                highButton = tk.Button(location, text="Configure", font=(None, 10), command=highConfig,
-                                       state=tk.DISABLED)
-                highButton.place(relx=.75, rely=0.015, relwidth=0.22, relheight=0.1)"""
-
 
 def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
-    if len(dframe) > 1:
+    if len(dframe) > 0:
         col = dframe.columns
         line = np.linspace(0, 100, 101)
 
@@ -1379,12 +1413,6 @@ def plotGraph(dframe, amass, location, xAxis, yAxis, flag):
         f = Figure(figsize=(3, 2.5), dpi=100)
         a = f.add_subplot(111)
         a.clear()
-        '''x=dframe[xAxis]
-        y=dframe[yAxis]
-        xy=np.vstack([x,y])
-        from scipy.stats import gaussian_kde
-        z = gaussian_kde(xy)(xy)
-        a.scatter(x,y,c=z,s=100,edgecolor='')'''
         a.scatter(xInact, yInact, color='gray', marker=".")
         a.scatter(xAct, yAct, color='orangered', marker=".")
         if len(xActOut) > 0:
@@ -1536,7 +1564,7 @@ def graphConfig(amass, dframe):
         plt.tick_params(axis='y', colors='black')
         plt.yticks(rotation=90)
         plt.xlim(-2, 130)
-        plt.ylim(-2, 100)
+        plt.ylim(0, 100)
         ax.scatter(xInact, yInact, color='gray', marker=".")
 
         if len(xActb10) > 0:
@@ -1573,7 +1601,7 @@ def graphConfig(amass, dframe):
         mngr.window.setGeometry = (50, 100, 640, 545)
         # mngr.window.setGeometry = (250, 120, 1280, 1024)
         # mngr.window.setGeometry
-        mngr.window.wm_iconbitmap(resource_path("dataFiles/qcfit-icon.ico"))
+        setWindowIcon(mngr.window)
         plt.show(block=False)
 
     if data["editWinFlag"] == 1:
@@ -1610,44 +1638,130 @@ def graphConfig(amass, dframe):
             editGraph.withdraw()
 
         def reset(dframe, amass, x, y):
+            """
+            Reset boundaries and spinbox values to their original state from the data dictionary.
+            Uses the original Kn/Kt max values, shape, and position values saved when the main plot was first shown.
+            """
             global data
             plt.close('all')
             outL = 0
             outR = 0
+            line = list(np.linspace(0, 100, 101))
 
-            ktMax = int(data[amass + "AM"]["knMax"])
+            # Get ORIGINAL Kn, Kt, shape, and position values (saved when main plot first shown)
+            Kn = int(data[amass + "AM"]["knMax_original"])
+            Kt = int(data[amass + "AM"]["ktMax_original"])
+            shapeL = data[amass + 'AM']['shapeLeft_original']
+            posL = data[amass + 'AM']['posLeft_original']
+            shapeR = data[amass + 'AM']['shapeRight_original']
+            posR = data[amass + 'AM']['posRight_original']
 
+            # Also update the current values back to originals
+            data[amass + "AM"]["knMax"] = Kn
+            data[amass + "AM"]["ktMax"] = Kt
+            data[amass + 'AM']['shapeLeft'] = shapeL
+            data[amass + 'AM']['posLeft'] = posL
+            data[amass + 'AM']['shapeRight'] = shapeR
+            data[amass + 'AM']['posRight'] = posR
+
+            print("\n" + "="*60)
+            print(f"RESET FUNCTION CALLED for {amass.upper()} airmass")
+            print("="*60)
+            print(f"Original Kn Max: {Kn}")
+            print(f"Original Kt Max: {Kt}")
+            print(f"Original Shape Left: {shapeL}, Position Left: {posL}")
+            print(f"Original Shape Right: {shapeR}, Position Right: {posR}")
+
+            # Reset spinbox values to original values from data dictionary
+            knVal.delete(0, 'end')
+            knVal.insert(0, Kn)
+            ktVal.delete(0, 'end')
+            ktVal.insert(0, Kt)
+            print(f"Spinbox values reset to: Kn={Kn}, Kt={Kt}")
+
+            # Reset UI control variables for shape and position
+            cLVar.set(shapeL)
+            cRVar.set(shapeR)
+            pLVar.set(posL)
+            pRVar.set(posR)
+            print(f"UI controls reset to: shapeL={shapeL}, posL={posL}, shapeR={shapeR}, posR={posR}")
+
+            # Recalculate boundary curves using original values
+            print(f"\nRecalculating boundary curves with original values...")
+            
+            # Prepare left boundary curve
+            yLB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
+            shiftL = (posL - 1) * 2.5
+            xLB = utills.curveLeft[shapeL - 1]
+            xLB = [point + shiftL for point in xLB]
+
+            # copy first value at 0th index for boundary alignment
+            xLB = [xLB[0], *xLB]
+
+            # Trim boundary to Kn points and extend remainder with Kt value
+            xLB = xLB[0:Kn + 1]
+            xLB += [Kt] * (len(line) - len(xLB))
+
+            # Remove negative boundary values (set to 0)
+            zeroesL = [0 for point in xLB if point < 0]
+            xLB = zeroesL + xLB[len(zeroesL):]
+
+            # Prepare right boundary curve (similar to left boundary)
+            yRB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
+            shiftR = (posR - 1) * 2.5
+            xRB = utills.curveRight[shapeR - 1]
+            xRB = [point + shiftR for point in xRB]
+            # copy first value at 0th index for boundary alignment
+            xRB = [xRB[0], *xRB]
+            # Ensure right boundary does not exceed Kt value
+            xRB = xRB[0:Kt + 1]
+            xRB = [i for i in xRB if i <= Kt]
+
+            # Extend right boundary to match line length (with safety check)
+            if len(xRB) > 0:
+                xRB += [xRB[-1]] * (len(line) - len(xRB))
+            else:
+                # Handle edge case where xRB is empty
+                xRB = [0] * len(line)
+            
+            print(f"Boundary data AFTER recalculation:")
+            print(f"Left Boundary (xLB) first 10 values: {xLB[:10]}")
+            print(f"Right Boundary (xRB) first 10 values: {xRB[:10]}")
+
+            # Store recalculated/initial boundaries in data dictionary
+            data[amass + 'AM']['xLB'] = xLB
+            data[amass + 'AM']['yLB'] = yLB
+            data[amass + "AM"]["lBound"] = xLB
+
+            data[amass + 'AM']['xRB'] = xRB
+            data[amass + 'AM']['yRB'] = yRB
+            data[amass + "AM"]["rBound"] = xRB
+
+            # Plot with reset boundaries
             plotForEdit(amass, dframe, flag, x, y, titleString)
-            # ax.scatter(xAct, yAct, color='blue')
-            # ax.scatter(xInact, yInact, color='orange')
-            # ax.plot(line, line, color="black")  # line no 0
-            # ax.plot(data[amass + "AM"]["xLB"], data[amass + "AM"]["yLB"], color="green")  # line no 1
-            # ax.plot(data[amass + "AM"]["xRB"], data[amass + "AM"]["yRB"], color="green")  # line no 2
+            print("Configuration panel plot updated with reset boundaries")
 
-            # update data dictionary
-            for yp in range(0, ktMax):
-                # activeCountL = list(df[df["KN"] == y][x])
-                # activeCountL = len([x for x in activeCountL if x < (ut.curveLeft[shapeL][y] + shiftL)])
-                # outL = outL + activeCountL
-
+            # Count data points outside left and right boundaries
+            for yp in range(0, Kn + 1):
                 countL = list(dframe[dframe[y] == yp][x])
                 countL = [xp for xp in countL if xp < int(data[amass + "AM"]["xLB"][yp])]
                 outL = outL + len(countL)
                 countR = list(dframe[dframe[y] == yp][x])
                 countR = [xp for xp in countR if xp > int(data[amass + "AM"]["xRB"][yp])]
                 outR = outR + len(countR)
-                # print("at y = ", y, "  ", "out left ", outL, "listL",
-                # list(filterData[filterData["KN"] == y][x]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
-                # outR)
 
-            # count if points are above configured kn max
+            # Count if points are above configured kn max
             upCount = dframe[dframe[flag] == 1]
-            upCount = upCount[upCount[y] > int(knVal.get())]
+            upCount = upCount[upCount[y] > Kn]
             outUp = upCount.__len__()
 
-            # updating data dictionary
+            print(f"\nOutlier counts:")
+            print(f"Points outside Left boundary (outL): {outL}")
+            print(f"Points outside Right boundary (outR): {outR}")
+            print(f"Points above Kn max (outUp): {outUp}")
+
+            # Update statistics in data dictionary
             data[amass + "AM"]["In"] = len(dframe[dframe[flag] == 1]) - (outL + outR + outUp)
-            # data[amass + "AM"]["Out"] = outL + outR + outUp
             data[amass + "AM"]["Active"] = len(dframe[dframe[flag] == 1])
             if data[amass + "AM"]["Active"] > 1:
                 data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
@@ -1659,10 +1773,32 @@ def graphConfig(amass, dframe):
             if data[amass + "AM"]["Active"] > 1:
                 data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
                 data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
+
+            print(f"\nStatistics after reset:")
+            print(f"In: {data[amass + 'AM']['In']}")
+            print(f"Out: {data[amass + 'AM']['Out']}")
+            print(f"Active: {data[amass + 'AM']['Active']}")
+            print(f"Ignored: {data[amass + 'AM']['Ignored']}")
+            print(f"Total: {data[amass + 'AM']['Total']}")
+            print(f"Err_L: {data[amass + 'AM']['Err_L']}%")
+            print(f"Err_R: {data[amass + 'AM']['Err_R']}%")
+
             setStats()
 
-            # update main canvas plot
+            # Update the UI labels to display the reset statistics
+            InVal.configure(text=data[amass + "AM"]["In"])
+            OutVal.configure(text=data[amass + "AM"]["Out"])
+            ActiveVal.configure(text=data[amass + "AM"]["Active"])
+            IgnoredVal.configure(text=data[amass + "AM"]["Ignored"])
+            TotalVal.configure(text=data[amass + "AM"]["Total"])
+            ErrLVal.configure(text=data[amass + "AM"]["Err_L"])
+            ErrRVal.configure(text=data[amass + "AM"]["Err_R"])
+            print("Configuration panel UI labels updated")
+
+            # Update main canvas plot
             plotGraph(dframe, amass, locationDict[amass], data["xAxis"], data["yAxis"], data["flag"])
+            print("Main canvas plot updated")
+            print("="*60 + "\n")
 
         def listPoints(amass, df, x, y):
             """if data["listPageFlag"] == 1:
@@ -1814,58 +1950,74 @@ def graphConfig(amass, dframe):
             # tempData = tempData[tempData["KT"] > data["x1"]]
 
         def spinCalculation(currAmass, x, y):
+            """
+            Updates Kn Max and Kt Max values for the specified airmass and recalculates boundaries.
+            
+            Args:
+                currAmass: Current airmass ('low', 'med', or 'high')
+                x: Column name for X-axis data (typically 'KT')
+                y: Column name for Y-axis data (typically 'KN')
+            """
             global data, pdLow, pdMed, pdHigh
             line = list(np.linspace(0, 100, 101))
 
+            # Calculate the change in Kn and Kt values from the spin box inputs
             knChange = int(knVal.get()) - int(data[currAmass + "AM"]["knMax"])
             ktChange = int(ktVal.get()) - int(data[currAmass + "AM"]["ktMax"])
 
             # if ktVal.get()==int(data[currAmass + "AM"]["xRB"][ktVal.get]):
             # return
 
+            # Iterate through all airmasses but only update the current one (currAmass)
             for amass, dframe in zip(["low", "med", "high"], [pdLow, pdMed, pdHigh]):
-                if data[amass + "AM"]["knMax"] != 'NA':
-                    if 1 <= (int(data[amass + "AM"]["knMax"]) + knChange) <= 99:
-                        if 1 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 130:
+                # IMPORTANT: Only process the currently selected airmass to keep values independent
+                if amass == currAmass and data[amass + "AM"]["knMax"] != 'NA':
+                    # Validate that new values are within acceptable ranges (Kn: 0-99, Kt: 0-130)
+                    if 0 <= (int(data[amass + "AM"]["knMax"]) + knChange) <= 99:
+                        if 0 <= (int(data[amass + "AM"]["ktMax"]) + ktChange) <= 130:
 
+                            # Update the Kn Max and Kt Max values for the current airmass only
                             data[amass + "AM"]["knMax"] = int(data[amass + "AM"]["knMax"]) + knChange
                             data[amass + "AM"]["ktMax"] = int(data[amass + "AM"]["ktMax"]) + ktChange
 
-                            # renaming for ease
+                            # Cache values for easier reference
                             Kn = int(data[amass + "AM"]["knMax"])
                             Kt = int(data[amass + "AM"]["ktMax"])
 
-                            # Prepare left boundary
+                            # Prepare left boundary curve
+                            # Create Y-axis line up to Kn, then fill rest with Kn value
                             yLB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-                            shiftL = data[amass + 'AM']['posLeft'] * 2.5
+                            # Apply position shift to the left boundary curve
+                            shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
                             xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
                             xLB = [point + shiftL for point in xLB]
 
-                            # copy first value at 0th index
+                            # copy first value at 0th index for boundary alignment
                             xLB = [xLB[0], *xLB]
 
-                            # replace the values greater than knmax-th value in curve with knmax-th value
+                            # Trim boundary to Kn points and extend remainder with Kt value
                             xLB = xLB[0:Kn + 1]
                             xLB += [Kt] * (len(line) - len(xLB))
 
-                            # Replace negative values with 0
+                            # Remove negative boundary values (set to 0)
                             zeroesL = [0 for point in xLB if point < 0]
                             xLB = zeroesL + xLB[len(zeroesL):]
 
-                            # Prepare right boundary
+                            # Prepare right boundary curve (similar to left boundary)
                             yRB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-                            shiftR = data[amass + 'AM']['posRight'] * 2.5
+                            shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
                             xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
                             xRB = [point + shiftR for point in xRB]
-                            # copy first value at 0th index
+                            # copy first value at 0th index for boundary alignment
                             xRB = [xRB[0], *xRB]
-                            # replace the values greater than knmax-th value in curve with knmax-th value
+                            # Ensure right boundary does not exceed Kt value
                             xRB = xRB[0:Kt + 1]
                             xRB = [i for i in xRB if i <= Kt]
 
+                            # Extend right boundary to match line length
                             xRB += [xRB[-1]] * (len(line) - len(xRB))
 
-                            # update data dictionary with new boundaries and bounds(lBound and rBound)
+                            # Store calculated boundaries in data dictionary
                             data[amass + 'AM']['xLB'] = xLB
                             data[amass + 'AM']['yLB'] = yLB
                             data[amass + "AM"]["lBound"] = xLB
@@ -1874,55 +2026,59 @@ def graphConfig(amass, dframe):
                             data[amass + 'AM']['yRB'] = yRB
                             data[amass + "AM"]["rBound"] = xRB
 
+                            # Get dataframe excluding marked outliers
                             filtFrame = dframe[dframe[amass + "Exclude"] == 0]
 
-                            # now clear old boundaries and plot new one.
+                            # Refresh plot for the edited airmass
                             if amass == currAmass:
                                 plt.close('all')
                                 plotForEdit(amass, filtFrame, flag, x, y, titleString)
 
-                            # update main canvas plot
+                            # Update main canvas plot to reflect boundary changes
                             plotGraph(filtFrame, amass, locationDict[amass], data["xAxis"], data["yAxis"], data["flag"])
+                            
+                            # Count data points outside left and right boundaries
                             outL = 0
                             outR = 0
                             for yp in range(0, Kn + 1):
-                                # activeCountL = list(df[df["KN"] == y]["KT"])
-                                # activeCountL = len([x for x in activeCountL if x < (ut.curveLeft[shapeL][y] + shiftL)])
-                                # outL = outL + activeCountL
-
+                                # Count points below left boundary for each Kn level
                                 countL = list(filtFrame[filtFrame[y] == yp][x])
                                 countL = [xp for xp in countL if xp < data[amass + "AM"]["xLB"][yp]]
                                 outL = outL + len(countL)
+                                
+                                # Count points above right boundary for each Kn level
                                 countR = list(filtFrame[filtFrame[y] == yp][x])
                                 countR = [xp for xp in countR if xp > data[amass + "AM"]["xRB"][yp]]
                                 outR = outR + len(countR)
-                                # print("at y = ", y, "  ", "out left ", outL, "listL",
-                                # list(filterData[filterData["KN"] == y]["KT"]), "curvePoint", data[amass+"AM"]["xLB"][y], " out right ",
-                                # outR)
 
-                            # count if points are above configured kn max
+                            # Count points above the configured Kn max
                             upCount = filtFrame[filtFrame[flag] == 1]
                             upCount = upCount[upCount[y] > Kn]
                             outUp = upCount.__len__()
 
-                            # updating data dictionary
+                            # Update statistics in data dictionary
+                            # "In" = valid points within boundaries
                             data[amass + "AM"]["In"] = len(filtFrame[filtFrame[flag] == 1]) - (outL + outR + outUp)
-                            # data[amass + "AM"]["Out"] = outL + outR + outUp
+                            # "Active" = total flagged points
                             data[amass + "AM"]["Active"] = len(filtFrame[filtFrame[flag] == 1])
+                            # "Out" = total outliers with percentage
                             if data[amass + "AM"]["Active"] > 1:
                                 data[amass + "AM"]["Out"] = str(outL + outR + outUp) + " (" + str(round(
                                     ((outL + outR + outUp) / data[amass + "AM"]["Active"]) * 100, 2)) + " %)"
                             else:
                                 data[amass + "AM"]["Out"] = outL + outR + outUp
+                            # "Ignored" = total flagged (excluded) points
                             data[amass + "AM"]["Ignored"] = len(filtFrame[filtFrame[flag] == 0])
+                            # "Total" = total data points
                             data[amass + "AM"]["Total"] = len(filtFrame)
+                            # Calculate error percentages for left and right boundaries
                             if data[amass + "AM"]["Active"] > 1:
                                 data[amass + "AM"]["Err_L"] = round((((outL) / data[amass + "AM"]["Active"]) * 100), 2)
                                 data[amass + "AM"]["Err_R"] = round((((outR) / data[amass + "AM"]["Active"]) * 100), 2)
 
                             setStats()
 
-            # Now update the current frame values
+            # Update the UI labels to display the current airmass statistics
             InVal.configure(text=data[currAmass + "AM"]["In"])
             OutVal.configure(text=data[currAmass + "AM"]["Out"])
             ActiveVal.configure(text=data[currAmass + "AM"]["Active"])
@@ -1952,7 +2108,7 @@ def graphConfig(amass, dframe):
 
                 # Prepare left boundary
                 yLB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-                shiftL = data[amass + 'AM']['posLeft'] * 2.5
+                shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
                 xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
                 xLB = [point + shiftL for point in xLB]
 
@@ -1969,7 +2125,7 @@ def graphConfig(amass, dframe):
 
                 # Prepare right boundary
                 yRB = line[0:Kn + 1] + [Kn for point in line if point > Kn]
-                shiftR = data[amass + 'AM']['posRight'] * 2.5
+                shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
                 xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
                 xRB = [point + shiftR for point in xRB]
                 # copy first value at 0th index
@@ -1988,6 +2144,27 @@ def graphConfig(amass, dframe):
                 data[amass + 'AM']['xRB'] = xRB
                 data[amass + 'AM']['yRB'] = yRB
                 data[amass + "AM"]["rBound"] = xRB
+
+                # Store initial boundary curves ONLY if not already stored (first time graphConfig is opened)
+                # Check if initial curves are still at default [0] value (not yet set)
+                if data[amass + 'AM']['xLB_initial'] == [0]:
+                    print(f"Storing initial curves for {amass.upper()} airmass")
+                    print(f"Kn={Kn}, Kt={Kt}")
+                    print(f"xLB first 10: {xLB[:10]}")
+                    print(f"xRB first 10: {xRB[:10]}")
+                    data[amass + 'AM']['xLB_initial'] = list(xLB)
+                    data[amass + 'AM']['yLB_initial'] = list(yLB)
+                    data[amass + 'AM']['xRB_initial'] = list(xRB)
+                    data[amass + 'AM']['yRB_initial'] = list(yRB)
+                    
+                    # UPDATE original Kn/Kt values if they were loaded as zero from QA0
+                    # This ensures reset uses the QAFIT-calculated values, not the zero values
+                    if int(data[amass + "AM"]["knMax_original"]) == 0 and int(data[amass + "AM"]["ktMax_original"]) == 0:
+                        print(f"Updating knMax_original and ktMax_original from zero to calculated values")
+                        data[amass + "AM"]["knMax_original"] = Kn
+                        data[amass + "AM"]["ktMax_original"] = Kt
+                        print(f"Original values now: Kn={Kn}, Kt={Kt}")
+
 
                 filtFrame = dframe[dframe[amass + "Exclude"] == 0]
 
@@ -2206,8 +2383,8 @@ def graphConfig(amass, dframe):
                 activeLBound = data[amass + "AM"]["activeLBound"]
                 activeRBound = data[amass + "AM"]["activeRBound"]
 
-            for curve in range(0, 6):
-                for position in range(1, 21):
+            for curve in range(0, 8):
+                for position in range(1, 31):
                     shift = ((position - 1) * 2.5)
                     dataCountL = 0
                     dataCountR = 0
@@ -2218,7 +2395,7 @@ def graphConfig(amass, dframe):
                     pointsL = zeroesL + pointsL[len(zeroesL):]
 
                     # Find the right curve with shift
-                    if curve < 5:
+                    if curve < 7:
                         pointsR = ut.curveRight[curve]
                         pointsR = [(point) + shift for point in pointsR]
 
@@ -2229,7 +2406,7 @@ def graphConfig(amass, dframe):
                             activeCountL = len([xp for xp in activeCountL if xp < (pointsL[yp])])
                             dataCountL = dataCountL + activeCountL
 
-                            if curve < 5:
+                            if curve < 7:
                                 activeCountR = list(df[df[y] == yp][x])
                                 activeCountR = len([xp for xp in activeCountR if xp > (pointsR[yp])])
                                 dataCountR = dataCountR + activeCountR
@@ -2238,13 +2415,13 @@ def graphConfig(amass, dframe):
                         pcL[dim, curve, position - 1] = pixCountL  # / scale
                         dcL[dim, curve, position - 1] = dataCountL  # * scale
 
-                        if curve < 5:
+                        if curve < 7:
                             pixCountR = np.sum(abs(np.array(pointsR[:knMax + 1]) - np.array(activeRBound)))
                             pcR[dim, curve, position - 1] = pixCountR  # / scale
                             dcR[dim, curve, position - 1] = dataCountR  # * scale
 
                     pixCountL = pcL[dim, curve, position - 1] / scale
-                    pixCountL = pixCountL / (areaLeft.iloc[int(knMax) - 1][(curve * 20) + position])
+                    pixCountL = pixCountL / areaLeft.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
 
                     dataCountL = dcL[dim, curve, position - 1] * scale
                     lcount = dcL[dim, curve, position - 1]
@@ -2259,9 +2436,9 @@ def graphConfig(amass, dframe):
                         positionL = position
                         outL = lcount
 
-                    if curve < 5:
+                    if curve < 7:
                         pixCountR = pcR[dim, curve, position - 1] / scale
-                        pixCountR = pixCountR / (areaRight.iloc[int(knMax) - 1][(curve * 20) + position])
+                        pixCountR = pixCountR / areaRight.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
                         dataCountR = dcR[dim, curve, position - 1] * scale
                         rcount = dcR[dim, curve, position - 1]
                         dataCountR = dataCountR / len(df)
@@ -2282,7 +2459,7 @@ def graphConfig(amass, dframe):
 
             leftB = list(ut.curveLeft[shapeL - 1])
             leftB = leftB[0:int(knMax)]  # get all the points of curve upto Ymax
-            leftB = [(i + (2.5 * positionL)) for i in leftB]
+            leftB = [(i + (2.5 * (positionL - 1))) for i in leftB]
 
             if leftB[-1] != int(ktMax):
                 leftB.append(int(ktMax))
@@ -2298,7 +2475,7 @@ def graphConfig(amass, dframe):
 
             rightB = list(ut.curveRight[shapeR - 1])
             rightB = rightB[0:int(knMax)]  # get all the points of curve upto Ymax
-            rightB = [(i + (2.5 * positionR)) for i in rightB]
+            rightB = [(i + (2.5 * (positionR - 1))) for i in rightB]
             rightB = [i for i in rightB if i <= int(ktMax)]
             if rightB[-1] != int(ktMax):
                 rightB.append(int(ktMax))
@@ -2331,7 +2508,7 @@ def graphConfig(amass, dframe):
 
             # Prepare left boundary
             yLB = list(line[0:knMax + 1]) + [knMax for point in line if point > knMax]
-            shiftL = data[amass + 'AM']['posLeft'] * 2.5
+            shiftL = (data[amass + 'AM']['posLeft'] - 1) * 2.5
             xLB = utills.curveLeft[data[amass + 'AM']['shapeLeft'] - 1]
             xLB = [point + shiftL for point in xLB]
 
@@ -2348,7 +2525,7 @@ def graphConfig(amass, dframe):
 
             # Prepare right boundary
             yRB = list(line[0:knMax + 1]) + [knMax for point in line if point > knMax]
-            shiftR = data[amass + 'AM']['posRight'] * 2.5
+            shiftR = (data[amass + 'AM']['posRight'] - 1) * 2.5
             xRB = utills.curveRight[data[amass + 'AM']['shapeRight'] - 1]
             xRB = [point + shiftR for point in xRB]
             # copy first value at 0th index
@@ -2467,7 +2644,7 @@ def graphConfig(amass, dframe):
         ktLabel = tk.Label(kCanvas, text="Kt Max * 100", font=(None, 12))
         ktLabel.place(relx=0.51, rely=0.2, relwidth=0.30, relheight=0.6)
         ktVal = tk.Spinbox(kCanvas, from_=minKt, to=ktMaxSpinVal, textvariable=ktSpinVar,
-                           command=partial(spinCalculation, amass))
+                           command=partial(spinCalculation, amass, x, y))
         ktVal.place(relx=0.82, rely=0.1, relwidth=0.17, relheight=0.8)
         ktVal.delete(0, 'end')
         ktVal.insert(0, int(data[amass + "AM"]["ktMax"]))
@@ -2482,7 +2659,7 @@ def graphConfig(amass, dframe):
         # list for option menus
         curveL = np.arange(1, 9)        # [1, 2, 3, 4, 5, 6, 7, 8]
         curveR = np.arange(1, 8)        # [1, 2, 3, 4, 5, 6, 7]
-        posit = np.arange(1, 41)        # [1, ..., 40]
+        posit = np.arange(1, 31)        # [1, ..., 30]
 
         cLabel = tk.Label(boundCanvas, text="Curve", font=(None, 12), anchor="w")
         cLabel.place(relx=0.01, rely=0.3566, relwidth=0.32, relheight=0.2866)
@@ -2564,15 +2741,12 @@ def graphConfig(amass, dframe):
         close.place(relx=0.72, rely=0.88, relwidth=0.18, relheight=0.07)
 
         editGraph.protocol("WM_DELETE_WINDOW", handleGraphCross)
-        editGraph.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+        setWindowIcon(editGraph)
         editGraph.mainloop()
 
 
 def setStats():
-    # lowX.config(text=(data["xAxis"] + " Max"))
     lowXVal.config(text=(data["lowAM"]["ktMax"]))
-
-    # lowY.config(text=(data["yAxis"] + " Max"))
     lowYVal.config(text=(data["lowAM"]["knMax"]))
 
     if lowXVal.cget("text") != 'NA':
@@ -2859,7 +3033,7 @@ def freqPlot():
     dat["bin"] = 0
     dat["freqStatus"] = dat["lowExclude"] + dat["medExclude"] + dat["highExclude"]
 
-    fData = dat[dat["month"] == ((monVar.get()).upper())[:3]][dat["freqStatus"] == 0]
+    fData = dat.loc[(dat["month"] == ((monVar.get()).upper())[:3]) & (dat["freqStatus"] == 0)].copy()
     if data["plane"] == 1:
         flag = data["flag"] = "activeKtKn"
     elif data["plane"] == 2:
@@ -2894,7 +3068,7 @@ def freqZoomed(event):
         loMed = pd.concat([pdLow, pdMed], ignore_index=True)
         dat = pd.concat([loMed, pdHigh], ignore_index=True)
         dat["bin"] = 0
-        fData = dat[dat["month"] == ((monVar.get()).upper())[:3]]
+        fData = dat.loc[dat["month"] == ((monVar.get()).upper())[:3]].copy()
 
         if data["plane"] == 1:
             flag = data["flag"] = "activeKtKn"
@@ -2934,7 +3108,7 @@ def freqZoomed(event):
         plt.show(block=False)
         plt.xlim(-15, 15)
 
-        pLow = fData[fData[flag] == 1][fData["NAM"] == 1]
+        pLow = fData.loc[(fData[flag] == 1) & (fData["NAM"] == 1)]
         if len(pLow) > 0:
             lowMean = list(pLow["bin"])
             lowMean = [int(i) for i in lowMean]
@@ -2942,7 +3116,7 @@ def freqZoomed(event):
             lowMean = lowMean * 20
         else:
             lowMean = [0] * 20
-        pMed = fData[fData[flag] == 1][fData["NAM"] == 2]
+        pMed = fData.loc[(fData[flag] == 1) & (fData["NAM"] == 2)]
         if len(pMed) > 0:
             medMean = list(pMed["bin"])
             medMean = [int(i) for i in medMean]
@@ -2950,7 +3124,7 @@ def freqZoomed(event):
             medMean = medMean * 30
         else:
             medMean = [0] * 30
-        pHigh = fData[fData[flag] == 1][fData["NAM"] == 3]
+        pHigh = fData.loc[(fData[flag] == 1) & (fData["NAM"] == 3)]
         if len(pHigh) > 0:
             highMean = list(pHigh["bin"])
             highMean = [int(i) for i in highMean]
@@ -2964,7 +3138,7 @@ def freqZoomed(event):
         plt.hist((highMean), label="High Airmass", color='blue')
         plt.legend()
         mngr = plt.get_current_fig_manager()
-        mngr.window.wm_iconbitmap(resource_path("dataFiles/qcfit-icon.ico"))
+        setWindowIcon(mngr.window)
 
 
 def density(*args):
@@ -3078,7 +3252,8 @@ def density(*args):
         densityData["freq%"] = densityData["frequency"] / sum(densityData["frequency"])
         densityData = densityData.sort_values(by=['density'])
         densityData["cumulative"] = densityData['freq%'].cumsum()
-        densityData.iloc[len(densityData) - 1, 4] = 1
+        if not densityData.empty:
+            densityData.iloc[len(densityData) - 1, 4] = 1
         # Allocating bins
         densityData.loc[(densityData["cumulative"] <= 1), "densBin"] = 5
         densityData.loc[(densityData["cumulative"] < .8), "densBin"] = 4
@@ -3412,22 +3587,25 @@ def save(month):
     if iterCount == 0:
         messagebox.showerror("Error", "Sorry, No data available to save.")
         return
-    fileQC = open(data["qa0Path"], "r")
-    content = fileQC.read().splitlines()
-    fileQC.close()
+    try:
+        content = utills.readQA0(data["qa0Path"]).splitlines()
+    except (utills.QA0FormatError, OSError, UnicodeError) as exc:
+        messagebox.showerror("QA0 File Error", f"Cannot save {data['qa0Path']}:\n{exc}")
+        return
 
     # update QA0 data
-    position = monList.index(month) + 10  # locating month
-    string = content[position]
+    _mon = month[:3].upper()
+    positions = [i for i, line in enumerate(content) if line.lstrip().startswith(_mon + ":")]
+    if len(positions) != 1:
+        messagebox.showerror("Error", f"Expected one {_mon} boundary row in the QA0 file.")
+        return
+    position = positions[0]
 
     # find knMax and KtMax
     __kn = [data["lowAM"]["knMax"], data["medAM"]["knMax"], data["highAM"]["knMax"]]
     __kt = [data["lowAM"]["ktMax"], data["medAM"]["ktMax"], data["highAM"]["ktMax"]]
     __kn = pd.to_numeric(pd.Series(__kn), errors="coerce").fillna(0).astype(int).tolist()
     __kt = pd.to_numeric(pd.Series(__kt), errors="coerce").fillna(0).astype(int).tolist()
-
-    # first writing Knmax and left curve shape and positions
-    _mon, _, _lam_max, _lam_left, _lam_right, _, _mam_max, _mam_left, _mam_right, _, _ham_max, _ham_left, _ham_right = re.split(r"[:,;, ]", string)
 
     # replace Kn-Kt max values
     _lam_max = f'{__kn[0]:02}-{__kt[0]:03}'
@@ -3444,7 +3622,7 @@ def save(month):
     _ham_right = f'{data["highAM"]["shapeRight"]}-{data["highAM"]["posRight"]:02}'
 
     # flesh out the final string with all the updated values
-    string = f"{_mon}: {_lam_max} {_lam_left} {_lam_right}; {_mam_max} {_mam_left} {_mam_right}; {_ham_max} {_ham_left} {_ham_right}"
+    string = f"{_mon}: {_lam_max} {_lam_left} {_lam_right}; {_mam_max} {_mam_left} {_mam_right}; {_ham_max} {_ham_left} {_ham_right};"
     content[position] = string
     content = "\n".join(content)
     fid = open(data["qa0Path"], 'w')
@@ -3530,13 +3708,30 @@ def exitProgram():
 def help():
     helpRoot = tk.Toplevel()
 
-    helpRoot.wm_geometry("800x720+500+250")
-    logo = ImageTk.PhotoImage(Image.open(resource_path('dataFiles/disclaimer.png')))
+    helpRoot.wm_geometry("1000x720+500+250")
+    logoSource = Image.open(resource_path('dataFiles/disclaimer_qafit.png'))
+    logoPreview = logoSource.copy()
+    logoPreview.thumbnail((496, 716), Image.Resampling.LANCZOS)
+    logo = ImageTk.PhotoImage(logoPreview)
 
     logoFrame = tk.Frame(helpRoot, bd=2)
     logoFrame.place(relx=0, rely=0, relwidth=0.5, relheight=1)
-    labelImg = tk.Label(logoFrame, image=logo)
+    labelImg = tk.Label(logoFrame, image=logo, bd=0, padx=0, pady=0)
     labelImg.place(relx=0, rely=0, relwidth=1, relheight=1)
+    logoState = {"size": None, "image": logo}
+
+    def resizeDisclaimer(event):
+        size = (event.width, event.height)
+        if size[0] <= 0 or size[1] <= 0 or size == logoState["size"]:
+            return
+
+        resizedImage = logoSource.copy()
+        resizedImage.thumbnail(size, Image.Resampling.LANCZOS)
+        logoState["image"] = ImageTk.PhotoImage(resizedImage)
+        logoState["size"] = size
+        labelImg.configure(image=logoState["image"])
+
+    labelImg.bind("<Configure>", resizeDisclaimer)
     text = "DISCLAIMER FOR \n SOFTWARE SUBMITTED TO OSTI\n\nThis  Software  is  provided by the  National  Renewable  Energy\n" \
            "Laboratory  (\"NREL\"),  which  is operated  by  the  Alliance for\n" \
            " Sustainable Energy, LLC (\"ALLIANCE\") for the " \
@@ -3579,7 +3774,7 @@ def help():
     textLabel = tk.Label(helpRoot, text=text)
     textLabel.place(relx=0.5, rely=0.0, relwidth=0.50, relheight=1)
 
-    helpRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+    setWindowIcon(helpRoot)
     helpRoot.mainloop()
 
 
@@ -3623,14 +3818,14 @@ data = {'qa0Path': '', 'defaultDataFolder': '', 'siteCode': '', 'siteDesc': '', 
         'listPageFlag': 0, 'flag': 'activeKtKn', 'xAxis': 'KT', 'yAxis': 'KN', 'x1': 0, 'x2': 0, 'y1': 0, 'y2': 0,
         'density': {'low': {'lower': "", 'upper': ""}, 'med': {'lower': "", 'upper': ""},
                     'high': {'lower': "", 'upper': ""}},
-        'lowAM': {'ktMax': 0, 'knMax': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
-                  'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
+        'lowAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
+                  'lBound': [0], 'rBound': [0], 'xLB_initial': [0], 'xRB_initial': [0], 'yLB_initial': [0], 'yRB_initial': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                   'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1},
-        'medAM': {'ktMax': 0, 'knMax': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
-                  'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
+        'medAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
+                  'lBound': [0], 'rBound': [0], 'xLB_initial': [0], 'xRB_initial': [0], 'yLB_initial': [0], 'yRB_initial': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                   'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1},
-        'highAM': {'ktMax': 0, 'knMax': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
-                   'lBound': [0], 'rBound': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
+        'highAM': {'ktMax': 0, 'knMax': 0, 'ktMax_original': 0, 'knMax_original': 0, 'kdMax': 0, 'shapeLeft': 0, 'shapeRight': 0, 'posLeft': 0, 'posRight': 0,
+                   'lBound': [0], 'rBound': [0], 'xLB_initial': [0], 'xRB_initial': [0], 'yLB_initial': [0], 'yRB_initial': [0], 'In': 0, 'Out': 0, 'Active': 0, 'Ignored': 0, 'Total': 0, 'Err_L': 0,
                    'Err_R': 0, 'activeLBound': [0], 'activeRBound': [0], 'scale': 1}}
 
 siteInfo = {}
@@ -3643,12 +3838,12 @@ pdHigh = pd.DataFrame()
 lowFilter = pd.DataFrame()
 medFilter = pd.DataFrame()
 highFilter = pd.DataFrame()
-dcL = np.zeros([3, 6, 20])
-pcL = np.zeros([3, 6, 20])
-dcR = np.zeros([3, 5, 20])
-pcR = np.zeros([3, 5, 20])
-scoreLeft = np.zeros([3, 5, 20])
-scoreRight = np.zeros([3, 5, 20])
+dcL = np.zeros([3, 8, 30])
+pcL = np.zeros([3, 8, 30])
+dcR = np.zeros([3, 7, 30])
+pcR = np.zeros([3, 7, 30])
+scoreLeft = np.zeros([3, 8, 30])
+scoreRight = np.zeros([3, 7, 30])
 iterCount = 0
 dFlag = 0
 filterDict = {'low': lowFilter, 'med': medFilter, 'high': highFilter}
@@ -3657,8 +3852,7 @@ nsPath = ""
 dfPath = ""
 buttonList = []
 flag = "activeKtKn"  # by default flag
-monList = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November",
-           "December"]
+monList = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 ipData = pd.DataFrame()
 yearList = ["fetch", "All"]
 planeVar = tk.IntVar()
@@ -4167,5 +4361,5 @@ integTimeLabel.place(relx=0.02, rely=0.1, relwidth=0.96, relheight=0.8)
 
 disable(integrationFrame.winfo_children())
 mainRoot.protocol("WM_DELETE_WINDOW", exitProgram)
-mainRoot.iconbitmap(resource_path('dataFiles/qcfit-icon.ico'))
+setWindowIcon(mainRoot)
 mainRoot.mainloop()

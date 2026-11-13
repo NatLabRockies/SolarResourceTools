@@ -16,6 +16,36 @@ Advanced features:
 - displays the points those fails by 3-component filtering 
 - data point list saved as *.csv and *.txt
 
+(As of Oct 7 2026, QAFIT upgraded from QCFIT)
+- wider Ktmax and Knmax readouts in all three main-window panels accommodate three-digit values
+- the main window title shows the selected station's code and description
+- new QA0 files use aligned air-mass headers and `Kn-Kt S-PP S-PP;` groups, with two-digit Kn and three-digit Kt fields; unconfigured months retain `00-000 0-00 0-00;` defaults
+- Save writes the same monthly row format; existing QA0 files without a final semicolon remain readable
+- malformed QA0 files show a `QA0 File Error` dialog with the file path and the invalid field or boundary row; opening and saving stop without overwriting the file
+- boundary-value errors identify the month, air-mass range, field, and offending value; separator errors are reported separately
+- Help -> About displays the entire disclaimer image, resized proportionally to fit its panel when the window is resized
+- QAFIT excludes points with unrounded Kn <= 0.01 (1%) from all K-space plots and automatic curve fitting, in every air-mass range and plane; the Y-axis still starts at zero
+- QAFIT filters input immediately after SZA calculation: only rows with calculated SZA < 80 degrees and positive extraterrestrial irradiance proceed to K-space processing, fitting, and graphing
+- curve positions are one-based: position 1 has no horizontal shift, and each subsequent position adds 2.5 percentage points; plotted boundaries and Configure adjustments use the same shift as automatic fitting
+- fitting area tables include all 8 left curves and 7 right curves at positions 1 through 30; both initial fitting and Configure refitting look up areas by curve and position
+
+Application icons:
+
+QAFIT uses Tk photo icons generated from `dataFiles/qafit-icon.ico` for its windows, including dialogs and plot windows. Native window-icon visibility depends on the desktop environment; macOS does not show ordinary title-bar icons.
+
+The macOS build workflow converts the same artwork to ICNS and embeds it in the `.app` bundle for Finder and Dock. Rebuild and launch the packaged app to see the new bundle icon; running the Python script directly does not set the Finder icon of the Python executable. The Windows build embeds the ICO in the executable.
+
+Testing:
+
+From the repository root, using the application's Python environment:
+
+```bash
+python -m pip install "pytest>=8,<10"
+python -m pytest tests -v
+```
+
+The GitHub Actions `Run Python tests` workflow runs the tests on pushes, pull requests, and manual dispatches using Python 3.10. QA0 samples are embedded in the tests; external data files and GUI access are not required.
+
 About SERI-QC:
 
 SERI-QC is a mathematical software package that assesses the quality of solar radiation data. Flags are set to inform the user of any departure of the data from expected values. These flags indicate the magnitude and direction of such departures. Flags only indicate that data do or do not fall within expected ranges. This does not mean that the data are or are not valid. Check Maxwell, 1993 for description of flags.
