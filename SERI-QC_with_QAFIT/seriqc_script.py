@@ -19,8 +19,6 @@ import numpy as np
 import datetime as datetime
 import statistics
 import dataPlots
-from pvlib.spa import solar_position
-from pvlib.irradiance import get_extra_radiation
 
 
 def takeValues():
@@ -582,151 +580,79 @@ def utcCoversion(ipData, timeZone, repFreq, measFreq):
 
 
 def calculateZenith(ipData, repFreq, measFreq, avg, latitude, longitude, elevation, pressure, temperature):
+    #################################
+
+    # Calculating ETR
+
+    #################################
+    SOLCON = 1361.1
+    ipData['B'] = 2 * math.pi * ipData['doy'] / 365
+    ipData['cos(B)'] = [math.cos(i) for i in ipData['B']]
+    ipData['sin(B)'] = [math.sin(i) for i in ipData['B']]
+    ipData['cos(2*B)'] = [math.cos(2 * i) for i in ipData['B']]
+    ipData['sin(2*B)'] = [math.sin(2 * i) for i in ipData['B']]
+
+    ipData['Rfact2'] = 1.00011 + 0.034221 * ipData['cos(B)'] + 0.00128 * ipData['sin(B)'] + 0.000719 * ipData[
+        'cos(2*B)'] + 0.000077 * ipData['sin(2*B)']
+    ipData['tempETRN'] = SOLCON * ipData['Rfact2']
 
     #################################
 
-    # Calculating SZA, ETRN, ETR
+    # Calculating SZA
 
     #################################
 
+    # dateTimeIndex=np.array(ipData['date-UTC'])
+    lat_lon = np.array([latitude, longitude])
     ipData['ETRN'] = 0.0
     ipData['solzen'] = 0.0
     ipData['sunup'] = 0.0
     ipData['ETR'] = 0.0
 
-    SOLAR_CONSTANT = 1361.1  # W/sq m
+    # ipData['SZA'] = SPA.apparent_zenith(dateTimeIndex, lat_lon, elev=elevation, pressure=pressure,
+    # temperature=temperature,  atmospheric_refraction=0.5667, delta_t=64.17)
+    global interval
+    """if avg == 'Yes':
+        interval = repFreq
+        loopIter = int(repFreq / measFreq)
+    else:
+        interval = 1
+        loopIter = 2
+        """
 
-    # Process each row of data
-    for idx in ipData.index:
-        # Extract timestamp from the row
-        # The timestamps in ipData are in UTC (based on column label 'date-UTC')
-        timestamp = pd.Timestamp(ipData.loc[idx, 'f0'])
-        
-        # Get time components
-        year = timestamp.year
-        month = timestamp.month
-        day = timestamp.day
-        hour = timestamp.hour
-        minute = timestamp.minute
-        
-        # NOTE: Input timestamps are already in UTC, so we use them directly
-        # No timezone conversion needed
-        
-        sol_zen = sun_up = etr = etrn = 0
-        
-        # Loop through the averaging interval
-        min_now = minute - repFreq
-        hour_now = hour
-        day_now = day
-        month_now = month
-        year_now = year
-        
-        # Rewind to start of interval if minute goes negative
-        if min_now < 0:
-            min_now += 60
-            hour_now -= 1
-            if hour_now < 0:
-                hour_now = 23
-                day_now -= 1
-                if day_now < 1:
-                    month_now -= 1
-                    if month_now < 1:
-                        month_now = 12
-                        year_now -= 1
-                    # Get last day of previous month
-                    days_in_months = [31, 28 if year_now % 4 != 0 else 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-                    day_now = days_in_months[month_now - 1]
-        
-        for i in range(int(repFreq) + 1):
-            frac = 0.5 if i == 0 or i == repFreq else 1
-            
-            # Reset to end of interval if minute wraps
-            if min_now == 60:
-                min_now = 0
-                hour_now = hour
-                day_now = day
-                month_now = month
-                year_now = year
-            
-            # Convert to unix time (UTC)
-            # Create UTC timestamp from components (already in UTC, no conversion needed)
-            utc_time = pd.Timestamp(year=year_now, month=month_now, day=day_now, 
-                                   hour=hour_now, minute=min_now, tz='UTC')
-            unix_time = utc_time.timestamp()
-            
-            # Calculate solar position for this minute
-            # solar_position() requires array-like input, so wrap scalar in array
-            spa_result = solar_position(
-                unixtime=np.array([unix_time]),
-                lat=latitude,
-                lon=longitude,
-                elev=elevation,
-                pressure=pressure,
-                temp=temperature,
-                delta_t=64.17,
-                atmos_refract=0.5667,
-                numthreads=8,
-                sst=False,
-                esd=False,
-            )
-            
-            # Extract apparent_zenith angle from result
-            # Debug on first iteration
-            if idx == ipData.index[0] and i == 0:
-                print(f"\n=== DEBUG: solar_position return structure for array input ===")
-                print(f"Type: {type(spa_result)}")
-                print(f"Shape: {spa_result.shape if hasattr(spa_result, 'shape') else 'N/A'}")
-                print(f"spa_result: {spa_result}")
-                if isinstance(spa_result, tuple):
-                    print(f"Is tuple with {len(spa_result)} elements")
-                    for j, item in enumerate(spa_result[:2]):
-                        print(f"  Item {j}: type={type(item)}, shape={getattr(item, 'shape', 'N/A')}")
-            
-            # Extract the zenith angle - spa_result[0] is first row (apparent_zenith), [0] gets first element
-            solar_zenith_now = spa_result[0][0]
-            
-            # Calculate ETR and ETRN for this minute
-            timestamp_utc = pd.to_datetime(unix_time, unit="s", utc=True)
-            etrn_now = get_extra_radiation(
-                timestamp_utc,
-                solar_constant=SOLAR_CONSTANT,
-                method="nrel",
-                delta_t=64.17,
-            )
-            
-            etr_now = etrn_now * np.cos(np.deg2rad(solar_zenith_now))
-            
-            # Accumulate if sun is up (positive ETR)
-            if etr_now > 0:
-                sun_up += frac
-                sol_zen += solar_zenith_now * frac
-                etr += etr_now * frac
-                etrn += etrn_now * frac
-            
-            min_now += 1
-        
-        # Average the accumulated values
-        if sun_up > 0:
-            ipData.loc[idx, 'solzen'] = sol_zen / sun_up
-            ipData.loc[idx, 'ETR'] = etr / repFreq
-            ipData.loc[idx, 'ETRN'] = etrn / repFreq
+    # fixed for hour based data. Because averaging is done anyways
+
+    interval = repFreq
+    # loopIter = interval+1
+
+    if interval == 1:
+        loopIter = 2
+    else:
+        loopIter = int(repFreq / measFreq) + 1
+
+    loopRun = 0
+    for i in range(loopIter):
+        ipData['tempETR'] = 0
+        ipData['tempSZA'] = 0
+        if i == 0 or i == interval:
+            fraction = 0.5
         else:
-            ipData.loc[idx, 'solzen'] = 100.0
-    
-    print(f"\n=== DEBUG: Final Solar Geometry Values ===")
-    print(f"First 10 rows of final ETR:")
-    print(ipData[['ETR']].head(10))
-    print(f"\nFirst 10 rows of final ETRN:")
-    print(ipData[['ETRN']].head(10))
-    print(f"\nFirst 10 rows of final solzen:")
-    print(ipData[['solzen']].head(10))
-    print(f"\nStats for ETR: min={ipData['ETR'].min():.2f}, max={ipData['ETR'].max():.2f}, mean={ipData['ETR'].mean():.2f}")
-    print(f"Stats for ETRN: min={ipData['ETRN'].min():.2f}, max={ipData['ETRN'].max():.2f}, mean={ipData['ETRN'].mean():.2f}")
-    print(f"Stats for solzen: min={ipData['solzen'].min():.2f}, max={ipData['solzen'].max():.2f}, mean={ipData['solzen'].mean():.2f}")
-    print(f"\nRows where ETR == 0: {(ipData['ETR'] == 0).sum()}")
-    print(f"Rows where ETRN == 0: {(ipData['ETRN'] == 0).sum()}")
-    print(f"Rows where solzen == 0: {(ipData['solzen'] == 0).sum()}")
-    print(f"Rows where solzen == 100: {(ipData['solzen'] == 100).sum()}")
+            fraction = 1.0
+        ipData['tempSZA'] = SPA.apparent_zenith(np.array(ipData['f' + str(i)]), lat_lon, elev=elevation,
+                                                pressure=pressure, temperature=temperature,
+                                                atmospheric_refraction=0.5667, delta_t=67)
+        ipData['tempETR'] = ipData['tempETRN'] * [math.cos(math.radians(i)) for i in ipData['tempSZA']]
+
+        ipData.loc[(ipData['tempETR'] > 0), 'sunup'] = ipData['sunup'] + 1 * fraction
+        ipData.loc[(ipData['tempETR'] > 0), 'solzen'] = ipData['solzen'] + ipData['tempSZA'] * fraction
+        ipData.loc[(ipData['tempETR'] > 0), 'ETR'] = ipData['ETR'] + ipData['tempETR'] * fraction
+        ipData.loc[(ipData['tempETR'] > 0), 'ETRN'] = ipData['ETRN'] + ipData['tempETRN'] * fraction
+        loopRun += 1
+
+    ipData.loc[(ipData['sunup'] > 0), 'solzen'] = ipData['solzen'] / ipData['sunup']
+    ipData.loc[(ipData['sunup'] > 0), 'ETR'] = ipData['ETR'] / interval
+    ipData.loc[(ipData['sunup'] > 0), 'ETRN'] = ipData['ETRN'] / interval
+    ipData.loc[ipData['sunup'] < 0, 'solzen'] = 100.0
 
 
 def calculatekSpaceVars(ipData, addComp):
@@ -943,6 +869,7 @@ def main():
     Alog_4 = 1.386294361
     XDm = (0.19, 0.22, 0.24, 0.28, 0.32)
 
+
     #################################
 
     # Calculating ETR
@@ -957,7 +884,7 @@ def main():
 
     ipData['Rfact2'] = 1.00011 + 0.034221 * ipData['cos(B)'] + 0.00128 * ipData['sin(B)'] + 0.000719 * ipData[
         'cos(2*B)'] + 0.000077 * ipData['sin(2*B)']
-    # ipData['tempETRN'] = 1361.2 * ipData['Rfact2'] # change to this before releasing
+    # pData['tempETRN'] = 1361.2 * ipData['Rfact2'] # change to this before releasing
     ipData['tempETRN'] = 1367 * ipData['Rfact2']
 
     #################################
@@ -993,7 +920,7 @@ def main():
         ipData['tempSZA'] = SPA.apparent_zenith(np.array(ipData['f' + str(i)]), lat_lon, elev=elevation,
                                                 pressure=pressure, temperature=temperature,
                                                 atmospheric_refraction=0.5667, delta_t=64.17)
-        ipData['tempETR'] = ipData['tempETRN'] * np.cos(np.radians(ipData['tempSZA']))
+        ipData['tempETR'] = ipData['tempETRN'] * [math.cos(math.radians(i)) for i in ipData['tempSZA']]
 
         ipData.loc[(ipData['tempETR'] > 0), 'sunup'] = ipData['sunup'] + 1 * fraction
         ipData.loc[(ipData['tempETR'] > 0), 'solzen'] = ipData['solzen'] + ipData['tempSZA'] * fraction
@@ -1004,7 +931,6 @@ def main():
     ipData.loc[(ipData['sunup'] > 0), 'ETR'] = ipData['ETR'] / interval
     ipData.loc[(ipData['sunup'] > 0), 'ETRN'] = ipData['ETRN'] / interval
     ipData.loc[ipData['sunup'] < 0, 'solzen'] = 100.0
-
 
     ipData['KT'] = -999
     ipData['KN'] = -999

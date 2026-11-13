@@ -130,6 +130,48 @@ def getKspace(ip):
     ip.loc[(ip['goAhead'] == 1.0) & (ip['KT1'] < miss), 'KT1'] = (ip['KT1'] * 100)
     ip.loc[(ip['goAhead'] == 1.0) & (ip['KN1'] < miss), 'KN1'] = (ip['KN1'] * 100)
 
+    # DEBUG: Print X-values and pre-rounding K-values before the final rounding step
+    print("================================================================================")
+    print("DEBUG: X-values and K-values BEFORE rounding in getKspace()")
+    print("================================================================================")
+    valid_kt = ip[(ip['KT'] > 0) & (ip['KT'] < 9900)]
+    if len(valid_kt) > 0:
+        max_kt_raw = valid_kt['KT'].max()
+        max_kt_idx = valid_kt['KT'].idxmax()
+        max_xt = valid_kt.loc[max_kt_idx, 'XT']
+        max_global = ip.loc[max_kt_idx, ip.columns[2]]  # Global is column 2
+        max_etr = ip.loc[max_kt_idx, 'ETR']
+        max_xn = ip.loc[max_kt_idx, 'XN']  # Check XN for this row!
+        max_nam = ip.loc[max_kt_idx, 'NAM'] if 'NAM' in ip.columns else 'N/A'
+        max_flag = ip.loc[max_kt_idx, 'activeGlobal'] if 'activeGlobal' in ip.columns else 'N/A'
+        
+        print(f"DEBUG: ROW WITH MAXIMUM KT VALUE:")
+        print(f"  Row index: {max_kt_idx}")
+        print(f"  Max raw KT value: {max_kt_raw}")
+        print(f"  Corresponding XT value: {max_xt}")
+        print(f"  Source data: Global={max_global}, ETR={max_etr}")
+        print(f"  XN (Direct/ETRN): {max_xn} (will be filtered if XN ≤ 0.01)")
+        print(f"  NAM (airmass): {max_nam}")
+        print(f"  activeGlobal flag: {max_flag}")
+        print(f"  Calculated XT = Global/ETR = {max_global}/{max_etr} = {max_global/max_etr if max_etr > 0 else 'N/A'}")
+        print(f"  After rounding (int(max+0.5)): {int(max_kt_raw + 0.5)}")
+        
+        # Now check: does this row exist in different filtered versions?
+        print(f"\nDEBUG: TRACKING THIS ROW THROUGH FILTERS:")
+        print(f"  Present in ip (all data)? {max_kt_idx in ip.index}")
+        print(f"  Row data summary: {dict(ip.loc[max_kt_idx, ['ETR', 'ETRN', 'XT', 'XN']].items()) if 'ETRN' in ip.columns else 'ETRN not in columns'}")
+        # Show top 5 pre-rounding values with their X-values
+        top_kt_idx = valid_kt['KT'].nlargest(5).index
+        print(f"  Top 5 pre-rounded KT values:")
+        for idx in top_kt_idx:
+            kt_val = ip.loc[idx, 'KT']
+            xt_val = ip.loc[idx, 'XT']
+            global_val = ip.loc[idx, ip.columns[2]]
+            etr_val = ip.loc[idx, 'ETR']
+            rounded = int(kt_val + 0.5)
+            print(f"    KT={kt_val:.10f} (XT={xt_val:.10f}, Global={global_val:.2f}, ETR={etr_val:.2f}) → rounds to {rounded}")
+    print("================================================================================\n")
+
     ip.loc[(ip['goAhead'] == 1.0) & (ip['XT'] < -10000.0), 'KT'] = -10000.0
     ip.loc[(ip['goAhead'] == 1.0) & (ip['XD'] < -10000.0), 'KD'] = -10000.0
     ip.loc[(ip['goAhead'] == 1.0) & (ip['XN'] < -10000.0), 'KN'] = -10000.0
@@ -139,7 +181,10 @@ def getKspace(ip):
     for column, source in (('KT', 'XT'), ('KD', 'XD'), ('KN', 'XN'),
                            ('KT1', 'KT1'), ('KN1', 'KN1')):
         mask = (ip['goAhead'] == 1.0) & (ip[source] < miss)
-        ip[column] = ip[column].map(int).where(mask, ip[column])
+        # Use int(x + 0.5) to match C's RoundRealToNearestInteger(), NOT round() which uses banker's rounding!
+        # Apply rounding where mask is True, keep miss values where mask is False
+        rounded = (ip[column] + 0.5).astype(int)
+        ip[column] = rounded.where(mask, ip[column])
 
 
 def hitOpen():
@@ -465,22 +510,121 @@ def hitOpen():
         repFreq = int(data["integration"])
         avg = "No"  # as its not being utilised due the Averaging method of Solar Zenith calculation
 
-        pressure = [item for item in ip.columns if 'Pressure' in item]
-        if len(pressure) == 0:
-            pressure = (101325 * (1 - (2.25577 * 10 ** (-5)) * data["elevation"]) ** 5.25588) / 100
-        else:
-            pressure = statistics.mean(ip[pressure])
+        pressure = 1013.25 * pow(1 - 2.25577 * pow(10,-5) * data["elevation"],5.25588)
 
-        temperature = 12
+        temperature = 11
         script.splitDate(ip, int(data["timeZone"]))
         script.utcCoversion(ip, int((data["timeZone"])), repFreq, measFreq)
         script.calculateZenith(ip, repFreq, measFreq, avg, data["latitude"], data["longitude"],
                                data["elevation"], pressure, temperature)
 
+        # Save solar geometry calculations to CSV for validation
+        print("================================================================================")
+        print("DEBUG: SAVING SOLAR GEOMETRY DATA TO CSV")
+        print("================================================================================")
+        solar_geometry_output = ip[['date-UTC', 'ETR', 'ETRN', 'solzen']].copy()
+        csv_filename = 'solar_geometry_validation.csv'
+        solar_geometry_output.to_csv(csv_filename, index=False)
+        print(f"DEBUG: Saved solar geometry data to '{csv_filename}'")
+        print(f"DEBUG: Total rows: {len(solar_geometry_output)}")
+        print(f"DEBUG: Columns: {list(solar_geometry_output.columns)}")
+        print(f"DEBUG: ETR statistics:")
+        print(f"  Min: {solar_geometry_output['ETR'].min():.6f}")
+        print(f"  Max: {solar_geometry_output['ETR'].max():.6f}")
+        print(f"  Mean: {solar_geometry_output['ETR'].mean():.6f}")
+        print(f"DEBUG: ETRN statistics:")
+        print(f"  Min: {solar_geometry_output['ETRN'].min():.6f}")
+        print(f"  Max: {solar_geometry_output['ETRN'].max():.6f}")
+        print(f"  Mean: {solar_geometry_output['ETRN'].mean():.6f}")
+        print(f"DEBUG: Solar Zenith Angle statistics:")
+        print(f"  Min: {solar_geometry_output['solzen'].min():.6f}")
+        print(f"  Max: {solar_geometry_output['solzen'].max():.6f}")
+        print(f"  Mean: {solar_geometry_output['solzen'].mean():.6f}")
+        print("================================================================================\n")
+
+        print("================================================================================")
+        print("DEBUG: ROWS FILTERED BY ETR > 0 CONDITION")
+        print("================================================================================")
+        rows_filtered_by_etr = ip[(ip["solzen"] < 80) & (ip["ETR"] <= 0)]
+        print(f"DEBUG: Rows with solzen < 80 but ETR ≤ 0: {len(rows_filtered_by_etr)}")
+        if len(rows_filtered_by_etr) > 0:
+            print(f"DEBUG: ETR statistics for filtered rows:")
+            print(f"  Min ETR: {rows_filtered_by_etr['ETR'].min()}")
+            print(f"  Max ETR: {rows_filtered_by_etr['ETR'].max()}")
+            print(f"  Mean ETR: {rows_filtered_by_etr['ETR'].mean()}")
+            if 'XT' in rows_filtered_by_etr.columns:
+                print(f"DEBUG: XT statistics for filtered rows:")
+                print(f"  Min XT: {rows_filtered_by_etr['XT'].min()}")
+                print(f"  Max XT: {rows_filtered_by_etr['XT'].max()}")
+                print(f"  Corresponding KT: {(rows_filtered_by_etr['XT'].max() * 100) if rows_filtered_by_etr['XT'].max() > 0 else 'N/A'}")
+        print("================================================================================\n")
+
         ip = ip[(ip["solzen"] < 80) & (ip["ETR"] > 0)].copy()
         getKspace(ip)
+        
+        # DEBUG: Show K-value statistics right after getKspace()
+        print("================================================================================")
+        print("DEBUG: K-value statistics AFTER getKspace() rounding")
+        print("================================================================================")
+        for col in ['KT', 'KN', 'KD']:
+            valid = ip[(ip[col] > 0) & (ip[col] < 1000)]
+            if len(valid) > 0:
+                print(f"DEBUG: Column '{col}':")
+                print(f"  Data type: {valid[col].dtype}")
+                print(f"  Min: {valid[col].min()}, Max: {valid[col].max()}")
+                sorted_vals = sorted(valid[col].unique(), reverse=True)
+                print(f"  Top 15 values: {sorted_vals[:15]}")
+                # Show if any values are floats
+                is_float = [v for v in valid[col] if isinstance(v, float) and v != int(v)]
+                if is_float:
+                    print(f"  WARNING: Found {len(is_float)} non-integer float values!")
+                    print(f"  Examples: {is_float[:5]}")
+        print("================================================================================\n")
 
+        # DEBUG: Before calculateAirmass
+        print("================================================================================")
+        print("DEBUG: AIRMASS CALCULATION ANALYSIS")
+        print("================================================================================")
+        print(f"DEBUG: Before calculateAirmass():")
+        print(f"DEBUG:   Total rows in ip: {len(ip)}")
+        if 'goAhead' in ip.columns:
+            print(f"DEBUG:   goAhead value counts:")
+            for val, count in ip['goAhead'].value_counts().sort_index().items():
+                print(f"DEBUG:     goAhead={val}: {count} rows")
+        
         script.calculateAirmass(ip)
+        
+        # DEBUG: After calculateAirmass
+        print(f"DEBUG: After calculateAirmass():")
+        print(f"DEBUG:   Total rows in ip: {len(ip)}")
+        print(f"DEBUG:   NAM value counts (airmass distribution):")
+        for nam_val in sorted(ip['NAM'].unique()):
+            count = len(ip[ip['NAM'] == nam_val])
+            print(f"DEBUG:     NAM={nam_val}: {count} rows")
+        
+        # Show airMass statistics
+        if 'airMass' in ip.columns:
+            active_rows = ip[ip['goAhead'] == 1]
+            if len(active_rows) > 0:
+                print(f"DEBUG:   airMass statistics (for goAhead==1 rows):")
+                print(f"DEBUG:     min: {active_rows['airMass'].min():.6f}")
+                print(f"DEBUG:     max: {active_rows['airMass'].max():.6f}")
+                print(f"DEBUG:     mean: {active_rows['airMass'].mean():.6f}")
+                
+                # Check for values near the boundaries
+                near_125 = active_rows[(active_rows['airMass'] > 1.2) & (active_rows['airMass'] < 1.3)]
+                near_25 = active_rows[(active_rows['airMass'] > 2.4) & (active_rows['airMass'] < 2.6)]
+                print(f"DEBUG:   airMass boundary analysis:")
+                print(f"DEBUG:     Rows near 1.25 (1.2-1.3): {len(near_125)}")
+                print(f"DEBUG:     Rows near 2.5 (2.4-2.6): {len(near_25)}")
+                if len(near_125) > 0:
+                    boundary_vals = sorted(near_125['airMass'].unique())
+                    print(f"DEBUG:       Values near 1.25: {boundary_vals[:5]}")
+                if len(near_25) > 0:
+                    boundary_vals = sorted(near_25['airMass'].unique())
+                    print(f"DEBUG:       Values near 2.5: {boundary_vals[:5]}")
+        
+        print("================================================================================")
         # Add columns for density:
         ip['density1'] = 0
         ip['density2'] = 0
@@ -885,6 +1029,30 @@ def plotUpdateThroughMonth(*args):
     data["month"] = monVar.get()
     data["year"] = yearVar.get()
     data["threshold"] = float(threshVar.get())
+    
+    # DEBUG: Show dataframe state BEFORE curvefitting()
+    print("================================================================================")
+    print("DEBUG: BEFORE curvefitting() - Dataframe state")
+    print("================================================================================")
+    print(f"DEBUG:   pdLow shape: {pdLow.shape}")
+    print(f"DEBUG:   pdMed shape: {pdMed.shape}")
+    print(f"DEBUG:   pdHigh shape: {pdHigh.shape}")
+    if len(pdMed) > 0:
+        print(f"DEBUG:   pdMed columns: {list(pdMed.columns)}")
+        if 'flag' in pdMed.columns:
+            print(f"DEBUG:   pdMed['flag'].unique(): {sorted(pdMed['flag'].unique())}")
+            print(f"DEBUG:   pdMed['flag'].value_counts():")
+            for val, count in pdMed['flag'].value_counts().sort_index().items():
+                print(f"DEBUG:     flag={val}: {count} rows")
+    if len(pdHigh) > 0:
+        print(f"DEBUG:   pdHigh columns: {list(pdHigh.columns)}")
+        if 'flag' in pdHigh.columns:
+            print(f"DEBUG:   pdHigh['flag'].unique(): {sorted(pdHigh['flag'].unique())}")
+            print(f"DEBUG:   pdHigh['flag'].value_counts():")
+            for val, count in pdHigh['flag'].value_counts().sort_index().items():
+                print(f"DEBUG:     flag={val}: {count} rows")
+    print("================================================================================")
+    
     curvefitting()
     getBoundaries()
     density()
@@ -924,14 +1092,137 @@ def curvefitting():
     ip["bin"] = ""
     ip["residual"] = ip["XT"] - ip["XN"] - ip["XD"]
 
+    # DEBUG: Show initial ip dataframe state
+    print("================================================================================")
+    print("DEBUG: Initial data loading (BEFORE XN > 0.01 filter)")
+    print("================================================================================")
+    print(f"DEBUG:   Total rows in ip: {len(ip)}")
+    if 'NAM' in ip.columns:
+        print(f"DEBUG:   Row distribution by NAM (airmass):")
+        for nam_val in sorted(ip['NAM'].unique()):
+            count = len(ip[ip['NAM'] == nam_val])
+            print(f"DEBUG:     NAM={nam_val}: {count} rows")
+    print("================================================================================")
+
+    # DEBUG: Analyze XN column before filtering
+    print("================================================================================")
+    print("DEBUG: XN COLUMN ANALYSIS (before XN > 0.01 filter)")
+    print("================================================================================")
+    print(f"DEBUG:   Total rows in ip: {len(ip)}")
+    if 'XN' in ip.columns:
+        print(f"DEBUG:   XN column data type: {ip['XN'].dtype}")
+        print(f"DEBUG:   XN statistics:")
+        print(f"DEBUG:     min: {ip['XN'].min():.10f}")
+        print(f"DEBUG:     max: {ip['XN'].max():.10f}")
+        print(f"DEBUG:     mean: {ip['XN'].mean():.10f}")
+        print(f"DEBUG:   Row counts:")
+        print(f"DEBUG:     XN > 0.01: {len(ip[ip['XN'] > 0.01])}")
+        print(f"DEBUG:     XN ≤ 0.01: {len(ip[ip['XN'] <= 0.01])}")
+        print(f"DEBUG:   Boundary analysis (0.005 to 0.015):")
+        near_boundary = ip[(ip['XN'] > 0.005) & (ip['XN'] < 0.015)]
+        print(f"DEBUG:     Rows near 0.01 boundary: {len(near_boundary)}")
+        if len(near_boundary) > 0:
+            boundary_vals = sorted(near_boundary['XN'].unique())
+            print(f"DEBUG:     Sample XN values near boundary: {boundary_vals[:15]}")
+        
+        # CRITICAL: Show values VERY close to 0.01 boundary
+        print(f"DEBUG:   CRITICAL BOUNDARY ANALYSIS (0.0099 to 0.0101):")
+        very_close = ip[(ip['XN'] > 0.0099) & (ip['XN'] < 0.0101)]
+        print(f"DEBUG:     Rows with XN between 0.0099-0.0101: {len(very_close)}")
+        if len(very_close) > 0:
+            close_vals = sorted(very_close['XN'].unique())
+            print(f"DEBUG:     Exact XN values very near 0.01 boundary: {close_vals[:20]}")
+            print(f"DEBUG:     Distribution by NAM:")
+            for nam_val in sorted(very_close['NAM'].unique()):
+                count = len(very_close[very_close['NAM'] == nam_val])
+                print(f"DEBUG:       NAM={nam_val}: {count} rows")
+        print("================================================================================")
+
+    print("================================================================================")
+
     # Use the unrounded Kn ratio; KN is truncated to integer percent.
-    plotData = ip[(ip["monthName"] == monVar.get()) & (ip["XN"] > 0.01)].copy()
+    # IMPORTANT: For max value extraction, use UNFILTERED data (matching C program behavior)
+    plotDataUnfiltered = ip[ip["monthName"] == monVar.get()].copy()
+    
+    # For curve fitting visualization, use FILTERED data with XN > 0.01
+    plotData = plotDataUnfiltered[(plotDataUnfiltered["XN"] > 0.01)].copy()
+
+    # DEBUG: Show after XN > 0.01 filter
+    print("DEBUG: After XN > 0.01 filter:")
+    print(f"DEBUG:   Total rows in unfiltered plotData: {len(plotDataUnfiltered)}")
+    print(f"DEBUG:   Total rows in filtered plotData: {len(plotData)}")
+    if 'NAM' in plotData.columns:
+        print(f"DEBUG:   Row distribution by NAM (airmass) - FILTERED:")
+        for nam_val in sorted(plotData['NAM'].unique()):
+            count = len(plotData[plotData['NAM'] == nam_val])
+            print(f"DEBUG:     NAM={nam_val}: {count} rows")
+    print("================================================================================")
+    
+    # DETAILED ANALYSIS: Rows being filtered out by XN > 0.01
+    print("================================================================================")
+    print("DEBUG: DETAILED ANALYSIS OF FILTERED-OUT ROWS (XN ≤ 0.01)")
+    print("================================================================================")
+    filtered_out = ip[(ip["monthName"] == monVar.get()) & (ip["XN"] <= 0.01)]
+    print(f"DEBUG: Total rows filtered out by XN ≤ 0.01: {len(filtered_out)}")
+    
+    if len(filtered_out) > 0:
+        print(f"DEBUG: Distribution of filtered rows by NAM:")
+        for nam_val in sorted(filtered_out['NAM'].unique()):
+            count = len(filtered_out[filtered_out['NAM'] == nam_val])
+            print(f"DEBUG:   NAM={nam_val}: {count} rows")
+        
+        print(f"DEBUG: Quality flags for filtered rows:")
+        print(f"DEBUG:   IQCDiffuse distribution:")
+        if 'IQCDiffuse' in filtered_out.columns:
+            for iqc_val in sorted(filtered_out['IQCDiffuse'].unique()):
+                count = len(filtered_out[filtered_out['IQCDiffuse'] == iqc_val])
+                print(f"DEBUG:     IQCDiffuse={iqc_val}: {count} rows")
+        
+        print(f"DEBUG:   IQCDirect distribution:")
+        if 'IQCDirect' in filtered_out.columns:
+            for iqc_val in sorted(filtered_out['IQCDirect'].unique()):
+                count = len(filtered_out[filtered_out['IQCDirect'] == iqc_val])
+                print(f"DEBUG:     IQCDirect={iqc_val}: {count} rows")
+        
+        print(f"DEBUG: Diffuse component (XD) statistics:")
+        if 'XD' in filtered_out.columns:
+            print(f"DEBUG:   XD min: {filtered_out['XD'].min():.10f}")
+            print(f"DEBUG:   XD max: {filtered_out['XD'].max():.10f}")
+            print(f"DEBUG:   XD mean: {filtered_out['XD'].mean():.10f}")
+            print(f"DEBUG:   Rows with XD > 0.01: {len(filtered_out[filtered_out['XD'] > 0.01])}")
+            print(f"DEBUG:   Rows with XD ≤ 0.01: {len(filtered_out[filtered_out['XD'] <= 0.01])}")
+        
+        print(f"DEBUG: K-value statistics for filtered rows (NAM=2 MED only):")
+        med_filtered = filtered_out[filtered_out['NAM'] == 2]
+        if len(med_filtered) > 0:
+            if 'KT' in med_filtered.columns:
+                print(f"DEBUG:   KT range: {med_filtered['KT'].min()} to {med_filtered['KT'].max()}")
+                print(f"DEBUG:   Top KT values: {sorted(med_filtered['KT'].unique(), reverse=True)[:10]}")
+            if 'KN' in med_filtered.columns:
+                print(f"DEBUG:   KN range: {med_filtered['KN'].min()} to {med_filtered['KN'].max()}")
+                print(f"DEBUG:   Top KN values: {sorted(med_filtered['KN'].unique(), reverse=True)[:10]}")
+        
+        print(f"DEBUG: Sample of filtered rows for detailed inspection:")
+        if len(med_filtered) > 0:
+            sample_cols = ['XN', 'XD', 'IQCDirect', 'IQCDiffuse', 'IQCGlobal', 'KT', 'KN', 'KD', 'NAM']
+            available_cols = [col for col in sample_cols if col in med_filtered.columns]
+            print(f"DEBUG:   Showing up to 10 MED filtered rows:")
+            for idx, row in med_filtered.head(10).iterrows():
+                vals_str = ", ".join([f"{col}={row[col]}" for col in available_cols])
+                print(f"DEBUG:     {vals_str}")
+    
+    print("================================================================================")
 
     # seperate data based on airmasses
-
+    # Use FILTERED data for curve fitting/visualization
     pdLow = plotData[plotData["NAM"] == 1].copy()
     pdMed = plotData[plotData["NAM"] == 2].copy()
     pdHigh = plotData[plotData["NAM"] == 3].copy()
+    
+    # Use UNFILTERED data for max value extraction (matches C program behavior)
+    pdLowUnfiltered = plotDataUnfiltered[plotDataUnfiltered["NAM"] == 1].copy()
+    pdMedUnfiltered = plotDataUnfiltered[plotDataUnfiltered["NAM"] == 2].copy()
+    pdHighUnfiltered = plotDataUnfiltered[plotDataUnfiltered["NAM"] == 3].copy()
 
     # identify axes based on kspaces
     if data["plane"] == 1:
@@ -953,42 +1244,101 @@ def curvefitting():
 
     # calculate max values of K space for each airmass
     # Read corresponding columns first
-    month_content = boundary[boundary["month"] == data["month"][:3].upper()] 
+    month_content = boundary[boundary["month"] == data["month"][:3].upper()]
+    print(f"\n{'='*80}")
+    print(f"DEBUG: BOUNDARY FILE READING - Month: {data['month'][:3].upper()}")
+    print(f"DEBUG: Boundary columns available: {boundary.columns.tolist()}")
+    print(f"DEBUG: month_content shape: {month_content.shape}")
+    print(f"DEBUG: month_content content:\n{month_content}")
     amass = ["low", "med", "high"]
     amass_acro = ["LA", "MA", "HA"]
     for am, am_acro in zip(amass, amass_acro):
-        data[am + "AM"]["knMax"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
-        data[am + "AM"]["ktMax"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
+        kn_val = int(list(month_content[am_acro + "_MAX_KN"])[0])
+        kt_val = int(list(month_content[am_acro + "_MAX_KT"])[0])
+        print(f"DEBUG: {am.upper()} airmass - Read from boundary file: MAX_KN={kn_val}, MAX_KT={kt_val}")
+        data[am + "AM"]["knMax"] = kn_val
+        data[am + "AM"]["ktMax"] = kt_val
         # Store original values for reset functionality
-        data[am + "AM"]["knMax_original"] = int(list(month_content[am_acro + "_MAX_KN"])[0])
-        data[am + "AM"]["ktMax_original"] = int(list(month_content[am_acro + "_MAX_KT"])[0])
+        data[am + "AM"]["knMax_original"] = kn_val
+        data[am + "AM"]["ktMax_original"] = kt_val
         # Also store original shape and position values
         data[am + "AM"]["shapeLeft_original"] = None
         data[am + "AM"]["posLeft_original"] = None
         data[am + "AM"]["shapeRight_original"] = None
         data[am + "AM"]["posRight_original"] = None
+    print(f"{'='*80}\n")
 
-    for df, am in zip([pdLow, pdMed, pdHigh], amass):
+    for df, df_unfiltered, am in zip([pdLow, pdMed, pdHigh], [pdLowUnfiltered, pdMedUnfiltered, pdHighUnfiltered], amass):
         # reduce maximus according to the airmass
         knMax = data[am + "AM"]["knMax"]
         ktMax = data[am + "AM"]["ktMax"]
         knMax = int(knMax)
         ktMax = int(ktMax)
+        
+        print(f"DEBUG: {am.upper()} - Before recalculation: knMax={knMax}, ktMax={ktMax}")
 
         if (knMax < 1) or (ktMax < 1):
+            print(f"DEBUG: {am.upper()} - Invalid values detected! Recalculating from UNFILTERED data...")
+            print(f"DEBUG: {am.upper()} - (Using unfiltered data to match C program behavior)")
+            
+            # DEBUG: Check data filtering BEFORE flag filter
+            print(f"DEBUG: {am.upper()} - Data analysis BEFORE flag filter:")
+            print(f"DEBUG: {am.upper()} -   Total rows in UNFILTERED dataframe: {len(df_unfiltered)}")
+            print(f"DEBUG: {am.upper()} -   Unique flag values: {sorted(df_unfiltered[flag].unique())}")
+            print(f"DEBUG: {am.upper()} -   Flag value counts:")
+            for val, count in df_unfiltered[flag].value_counts().sort_index().items():
+                print(f"DEBUG: {am.upper()} -     flag={val}: {count} rows")
+            
+            df_filtered = df_unfiltered[df_unfiltered[flag] == 1]
+            print(f"DEBUG: {am.upper()} - After flag==1 filter:")
+            print(f"DEBUG: {am.upper()} -   Rows with flag==1: {len(df_filtered)} active data points")
+            print(f"DEBUG: {am.upper()} -   Rows with flag!=1: {len(df_unfiltered) - len(df_filtered)} inactive rows")
+            
             for k in (["KT", "KN"]):
-                df = df[df[flag] == 1]
-                tempList = list(set(df[k]))
+                df_for_extraction = df_unfiltered[df_unfiltered[flag] == 1]
+                tempList = list(set(df_for_extraction[k]))
 
+                print(f"DEBUG: {am.upper()} - Processing column '{k}':")
+                print(f"DEBUG: {am.upper()} -   Raw unique values count: {len(tempList)}")
+                print(f"DEBUG: {am.upper()} -   Raw value range: {min(tempList) if len(tempList) > 0 else 'N/A'} to {max(tempList) if len(tempList) > 0 else 'N/A'}")
+                
                 if len(tempList) > 0:
+                    # Show the actual types and highest values before filtering
+                    sorted_raw = sorted(tempList, reverse=True)
+                    print(f"DEBUG: {am.upper()} -   Top 10 raw values BEFORE filtering: {sorted_raw[:10]}")
+                    print(f"DEBUG: {am.upper()} -   Type of max value: {type(max(tempList))}")
+                    
+                    tempList_before = tempList.copy()
                     tempList = [i for i in tempList if 0 < i < 1000]
-                    maxVal = int(max(tempList))
+                    print(f"DEBUG: {am.upper()} -   After filtering (0 < x < 1000):")
+                    print(f"DEBUG: {am.upper()} -     Count: {len(tempList_before)} → {len(tempList)} (removed {len(tempList_before)-len(tempList)})")
+                    
+                    # Show which values were removed
+                    removed = [v for v in tempList_before if not (0 < v < 1000)]
+                    if removed:
+                        print(f"DEBUG: {am.upper()} -     Removed values: {sorted(removed)}")
+                    
+                    if len(tempList) > 0:
+                        print(f"DEBUG: {am.upper()} -     Filtered range: {min(tempList)} to {max(tempList)}")
+                        # Show top 5 values to identify edge cases
+                        sorted_templist = sorted(tempList, reverse=True)
+                        print(f"DEBUG: {am.upper()} -     Top 5 values: {sorted_templist[:5]}")
+                        maxVal_original = max(tempList)
+                        maxVal = int(maxVal_original + 0.5)
+                        print(f"DEBUG: {am.upper()} -     max(tempList)={maxVal_original}, int(max+0.5)={maxVal}")
+                    else:
+                        maxVal = "NA"
+                        print(f"DEBUG: {am.upper()} -     No values in range! Result: NA")
                 else:
                     maxVal = "NA"
+                    print(f"DEBUG: {am.upper()} -   No data! Result: NA")
+                    
                 if k == "KT":
                     ktMax = maxVal
+                    print(f"DEBUG: {am.upper()} - Recalculated KtMax from data: {maxVal}")
                 elif k == "KN":
                     knMax = maxVal
+                    print(f"DEBUG: {am.upper()} - Recalculated KnMax from data: {maxVal}")
 
             # now update the data dictionary
             data[am + "AM"]["ktMax"] = ktMax
@@ -997,6 +1347,9 @@ def curvefitting():
             # UPDATE original values when QAFIT calculates them (was zero before)
             data[am + "AM"]["ktMax_original"] = ktMax
             data[am + "AM"]["knMax_original"] = knMax
+            print(f"DEBUG: {am.upper()} - After recalculation: knMax={knMax}, ktMax={ktMax}")
+        else:
+            print(f"DEBUG: {am.upper()} - Values are valid, no recalculation needed")
 
 
 def getBoundaries():
@@ -1004,6 +1357,14 @@ def getBoundaries():
     # get area table for left and right curves
     areaLeft = cAr.getArea("left")
     areaRight = cAr.getArea("right")
+    
+    print(f"\n{'='*80}")
+    print(f"DEBUG: GETBOUNDARIES - Area table dimensions")
+    print(f"DEBUG: areaLeft shape: {areaLeft.shape}")
+    print(f"DEBUG: areaLeft index range: {areaLeft.index.min()} to {areaLeft.index.max()}")
+    print(f"DEBUG: areaRight shape: {areaRight.shape}")
+    print(f"DEBUG: areaRight index range: {areaRight.index.min()} to {areaRight.index.max()}")
+    print(f"{'='*80}\n")
     airmasses = ["low", "med", "high"]
     airmasses_acro = ["LA", "MA", "HA"]
     dataFrames = [pdLow, pdMed, pdHigh]
@@ -1047,6 +1408,10 @@ def getBoundaries():
         # giving shortcuts
         ktMax = data[amass + "AM"]["ktMax"]
         knMax = data[amass + "AM"]["knMax"]
+        
+        print(f"\nDEBUG: {amass.upper()} airmass - Starting boundary calculation")
+        print(f"DEBUG: {amass.upper()} - knMax={knMax}, ktMax={ktMax}")
+        print(f"DEBUG: {amass.upper()} - Active data points: {len(dframe[dframe[flag] == 1])}")
 
         # get/calculate  boundaries if ktMax or knMax are not NA. (i,e. data frame is not empty)
 
@@ -1119,6 +1484,10 @@ def getBoundaries():
             # updating dictionary
             data[amass + "AM"]["activeLBound"] = activeLBound
             data[amass + "AM"]["activeRBound"] = activeRBound
+            
+            print(f"DEBUG: {amass.upper()} - Boundary arrays built:")
+            print(f"DEBUG: {amass.upper()} - activeLBound length: {len(activeLBound)} (knMax+1 = {int(knMax)+1})")
+            print(f"DEBUG: {amass.upper()} - activeRBound length: {len(activeRBound)} (knMax+1 = {int(knMax)+1})")
 
             if (shapeL == 0):  # Assumption is we have both the boundaries (left and right) or none
                 # count active points on the left of curve.
@@ -1174,6 +1543,13 @@ def getBoundaries():
 
                         pixCountL = np.sum(abs(np.array(pointsL[:knMax + 1]) - np.array(activeLBound)))
                         pcL[dim, curve, position - 1] = pixCountL
+                        
+                        # DEBUG: Check area table access
+                        area_index = int(knMax) - 1
+                        if curve == 0 and position == 1:  # Only print once per airmass
+                            print(f"DEBUG: {amass.upper()} - Area lookup: areaLeft.loc[{area_index}, '{curve + 1}-{position}']")
+                            print(f"DEBUG: {amass.upper()} - areaLeft has indices 0-{areaLeft.shape[0]-1}, trying to access {area_index}")
+                        
                         pixCountL = pixCountL / areaLeft.loc[int(knMax) - 1, f"{curve + 1}-{position}"]
 
                         dcL[dim, curve, position - 1] = dataCountL
