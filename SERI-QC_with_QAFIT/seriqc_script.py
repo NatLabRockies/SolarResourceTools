@@ -582,48 +582,19 @@ def utcCoversion(ipData, timeZone, repFreq, measFreq):
 def calculateZenith(ipData, repFreq, measFreq, avg, latitude, longitude, elevation, pressure, temperature):
     #################################
 
-    # Calculating ETR
+    # Calculating ETRN using inverse-square law with sun-earth distance
 
     #################################
     SOLCON = 1361.1
-    ipData['B'] = 2 * math.pi * ipData['doy'] / 365
-    ipData['cos(B)'] = [math.cos(i) for i in ipData['B']]
-    ipData['sin(B)'] = [math.sin(i) for i in ipData['B']]
-    ipData['cos(2*B)'] = [math.cos(2 * i) for i in ipData['B']]
-    ipData['sin(2*B)'] = [math.sin(2 * i) for i in ipData['B']]
-
-    ipData['Rfact2'] = 1.00011 + 0.034221 * ipData['cos(B)'] + 0.00128 * ipData['sin(B)'] + 0.000719 * ipData[
-        'cos(2*B)'] + 0.000077 * ipData['sin(2*B)']
-    ipData['tempETRN'] = SOLCON * ipData['Rfact2']
-
-    #################################
-
-    # Calculating SZA
-
-    #################################
-
-    # dateTimeIndex=np.array(ipData['date-UTC'])
     lat_lon = np.array([latitude, longitude])
+    
     ipData['ETRN'] = 0.0
     ipData['solzen'] = 0.0
     ipData['sunup'] = 0.0
     ipData['ETR'] = 0.0
 
-    # ipData['SZA'] = SPA.apparent_zenith(dateTimeIndex, lat_lon, elev=elevation, pressure=pressure,
-    # temperature=temperature,  atmospheric_refraction=0.5667, delta_t=64.17)
     global interval
-    """if avg == 'Yes':
-        interval = repFreq
-        loopIter = int(repFreq / measFreq)
-    else:
-        interval = 1
-        loopIter = 2
-        """
-
-    # fixed for hour based data. Because averaging is done anyways
-
     interval = repFreq
-    # loopIter = interval+1
 
     if interval == 1:
         loopIter = 2
@@ -634,14 +605,25 @@ def calculateZenith(ipData, repFreq, measFreq, avg, latitude, longitude, elevati
     for i in range(loopIter):
         ipData['tempETR'] = 0
         ipData['tempSZA'] = 0
+        ipData['tempETRN'] = 0
+        
         if i == 0 or i == interval:
             fraction = 0.5
         else:
             fraction = 1.0
+        
+        # Get solar zenith angle from SPA
         ipData['tempSZA'] = SPA.apparent_zenith(np.array(ipData['f' + str(i)]), lat_lon, elev=elevation,
                                                 pressure=pressure, temperature=temperature,
                                                 atmospheric_refraction=0.5667, delta_t=67)
-        ipData['tempETR'] = ipData['tempETRN'] * [math.cos(math.radians(i)) for i in ipData['tempSZA']]
+        
+        # Calculate ETRN using inverse-square law: ETRN = SOLCON / r^2
+        # where r is the sun-earth distance in AU
+        r = SPA.sun_earth_distance(np.array(ipData['f' + str(i)]), delta_t=67)
+        ipData['tempETRN'] = SOLCON / (r * r)
+        
+        # Calculate ETR = ETRN * cos(zenith angle)
+        ipData['tempETR'] = ipData['tempETRN'] * [math.cos(math.radians(j)) for j in ipData['tempSZA']]
 
         ipData.loc[(ipData['tempETR'] > 0), 'sunup'] = ipData['sunup'] + 1 * fraction
         ipData.loc[(ipData['tempETR'] > 0), 'solzen'] = ipData['solzen'] + ipData['tempSZA'] * fraction
