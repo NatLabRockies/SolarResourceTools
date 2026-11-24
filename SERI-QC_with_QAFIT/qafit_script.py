@@ -1801,10 +1801,6 @@ def graphConfig(amass, dframe):
             print("="*60 + "\n")
 
         def listPoints(amass, df, x, y):
-            """if data["listPageFlag"] == 1:
-                return
-            else:
-                data["listPageFlag"] = 1"""
             df = df[df[amass + "Exclude"] == 0]
             df["toList"] = 0
             # selecting points inside rectangular selection
@@ -1812,55 +1808,26 @@ def graphConfig(amass, dframe):
             df.loc[(df["toList"] == 1) & (df[x] < data["x1"]), "toList"] = 0  # left min bound
             df.loc[(df["toList"] == 1) & (df[y] > data["y2"]), "toList"] = 0  # top max bound
             df.loc[(df["toList"] == 1) & (df[y] < data["y1"]), "toList"] = 0  # lower min bound
-
             df = df[df["toList"] == 1]
-            cols = list(df.columns[2:7])
-            # Cols should be [Date, Time, ghi, dni, dhi, ... , KT, KN, KD] where Date and Time column is extracted from 'date' column.
+            
+            # Cols should be [SZA, KT, KN, KD, Date, Time, ghi, dni, dhi, ... ] where Date and Time column is extracted from 'date' column.
             points = pd.DataFrame()
+            # start with SZA column -- TODO: Make sure SZA column is from qafit dataframe, not original one
+            points['SZA'] = df['SZA'].astype('float').round(3)
+            # now add KT KN and KD with three decimal places
+            points["KT"] = df[x].astype('float').round(3)
+            points["KN"] = df[y].astype('float').round(3)
+            points["KD"] = df["KD"].astype('float').round(3)
             # 'date' column is the one with local timezone.
             points['Date'] = df['date'].dt.date
             points['Time'] = df['date'].dt.time
-            for col in cols:
-                points[col] = df[col]
-            # now add KT KN and KD
-
-            points["KT"] = df[x]
-            points["KN"] = df[y]
-            points["KD"] = df["KD"]
-            # points[points.columns[0]] = points[points.columns[0]]  # .dt.date
-
-            # # limit upto 4th dec places
-            # # decimals = pd.Series([2, 2, 2], index=[points.columns[2], points.columns[3], points.columns[4]])
-            # points[points.columns[2]] = points[points.columns[2]].astype('float').round(2)
-            # points[points.columns[3]] = points[points.columns[3]].astype('float').round(2)
-            # points[points.columns[4]] = points[points.columns[4]].astype('float').round(2)
-            # points[points.columns[8]] = points[points.columns[8]].map(int)
-            # points[points.columns[9]] = points[points.columns[9]].map(int)
-            # points[points.columns[10]] = points[points.columns[10]].map(int)
-
-            points.to_csv("Data_Points.csv")
-            np.savetxt(r'Data_Points.txt', points.values, fmt='%s')
-
-            # add header in txt file
-
-            f = open("Data_Points.txt", "r+")
-            content = f.read()
-
-            c1 = points.columns[2].replace(" ", "_")
-            c2 = points.columns[3].replace(" ", "_")
-            c3 = points.columns[4].replace(" ", "_")
-            content = "date time " + c1 + " " + c2 + " " + c3 + " " + "IQCGlobal IQCDirect IQCDiffuse KT KN KD \n" + content
-            content.replace(" ", "    ")
-            f.seek(0, 0)
-            f.write(content)
-            f.close()
-
-            if platform.system() == "Windows":
-                os.system("Data_Points.txt")
-                os.system("Data_Points.csv")
-            else:
-                subprocess.run(['open', "Data_Points.txt"], check=True)
-                subprocess.run(['open', "Data_Points.csv"], check=True)
+            # now add ghi, dni, dhi with three decimal places -- TODO: Make sure the column names are from qafit dataframe, not original one
+            points["ghi"] = df["ghi"].astype('float').round(3)
+            points["dni"] = df["dni"].astype('float').round(3)
+            points["dhi"] = df["dhi"].astype('float').round(3)
+            # save as both csv and txt
+            points.to_csv("Data_Points.csv", index=False)
+            points.to_csv("Data_Points.txt", sep='\t', index=False)
 
         def exclude(amass, dframe, x, y):
             plt.close('all')
