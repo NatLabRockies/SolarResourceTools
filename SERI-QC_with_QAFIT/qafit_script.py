@@ -3715,7 +3715,7 @@ def help():
     logo = ImageTk.PhotoImage(logoPreview)
 
     logoFrame = tk.Frame(helpRoot, bd=2)
-    logoFrame.place(relx=0, rely=0, relwidth=0.5, relheight=1)
+    logoFrame.place(relx=0, rely=0, relwidth=1, relheight=1)
     labelImg = tk.Label(logoFrame, image=logo, bd=0, padx=0, pady=0)
     labelImg.place(relx=0, rely=0, relwidth=1, relheight=1)
     logoState = {"size": None, "image": logo}
@@ -3732,47 +3732,47 @@ def help():
         labelImg.configure(image=logoState["image"])
 
     labelImg.bind("<Configure>", resizeDisclaimer)
-    text = "DISCLAIMER FOR \n SOFTWARE SUBMITTED TO OSTI\n\nThis  Software  is  provided by the  National  Renewable  Energy\n" \
-           "Laboratory  (\"NREL\"),  which  is operated  by  the  Alliance for\n" \
-           " Sustainable Energy, LLC (\"ALLIANCE\") for the " \
-           "U.S. Department \nof Energy (\"DOE\"). \n\n" \
-           "" \
-           " Access to and use of this Software shall impose the following\n" \
-           "obligations on the user, as set forth herein. The user is granted\n" \
-           " the  right,  without  any  fee or  cost, to use, copy, modify, alter,\n" \
-           " enhance   and   distribute   this   Software   for   any   purpose \n" \
-           " whatsoever,  provided  that this  entire   notice   appears  in  all \n" \
-           "copies of the Software.  Further, the user agrees to credit DOE\n" \
-           "/NREL/ALLIANCE in any publication that results from the use of\n" \
-           " this Software.  The names DOE/NREL/ALLIANCE, however, may\n" \
-           "not be used in any advertising or publicity to endorse or promote\n" \
-           " anyproducts  or  commercial  entities  unless  specific  written \n" \
-           "permission  is  obtained  from  DOE/NREL/ALLIANCE.  The user\n" \
-           " also  understands  that  DOE/NREL/Alliance  is not obligated  to \n" \
-           "provide   the  user  with  any   support, consulting,  training  or \n" \
-           "assistance of any kind  with regard  to the  use  of this Software\n" \
-           "or  to  provide  the  user with  any  updates,  revisions  or  new \n" \
-           "versions of this Software.\n\n" \
-           "YOU  AGREE  TO  INDEMNIFY  DOE/NREL/ALLIANCE,  AND  ITS\n" \
-           "SUBSIDIARIES,   AFFILIATES,   OFFICERS,   AGENTS,   AND\n" \
-           "EMPLOYEES  AGAINST  ANY   CLAIM  OR  DEMAND,  INCLUDING\n" \
-           "REASONABLE  ATTORNEYS' FEES,  RELATED  TO  YOUR  USE OF\n" \
-           "THIS  SOFTWARE.  THIS  SOFTWARE  IS  PROVIDED  BY  DOE/\n" \
-           "NREL/ALLIANCE\"AS  IS\"  AND  ANY  EXPRESS  OR  IMPLIED\n" \
-           "WARRANTIES, INCLUDING  BUT NOT LIMITED TO, THE IMPLIED\n" \
-           "WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A \n" \
-           "PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL\n" \
-           "DOE/NREL/ALLIANCE BE LIABLE FOR ANY SPECIAL, INDIRECT\n" \
-           "OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES \n" \
-           "WHATSOEVER, INCLUDING BUT NOT LIMITED TO CLAIMS \n" \
-           "ASSOCIATED WITH THE LOSS OF DATA OR PROFITS, WHICH\n" \
-           "MAY RESULT FROM AN ACTION IN CONTRACT, NEGLIGENCE On\n" \
-           "OTHER TORTIOUS CLAIM THAT ARISES OUT OF OR IN \n" \
-           "CONNECTION WITH THE ACCESS, USE OR PERFORMANCE OF\n" \
-           "THIS SOFTWARE. "
+    # text = "DISCLAIMER FOR \n SOFTWARE SUBMITTED TO OSTI\n\nThis  Software  is  provided by the  National  Renewable  Energy\n" \
+    #        "Laboratory  (\"NREL\"),  which  is operated  by  the  Alliance for\n" \
+    #        " Sustainable Energy, LLC (\"ALLIANCE\") for the " \
+    #        "U.S. Department \nof Energy (\"DOE\"). \n\n" \
+    #        "" \
+    #        " Access to and use of this Software shall impose the following\n" \
+    #        "obligations on the user, as set forth herein. The user is granted\n" \
+    #        " the  right,  without  any  fee or  cost, to use, copy, modify, alter,\n" \
+    #        " enhance   and   distribute   this   Software   for   any   purpose \n" \
+    #        " whatsoever,  provided  that this  entire   notice   appears  in  all \n" \
+    #        "copies of the Software.  Further, the user agrees to credit DOE\n" \
+    #        "/NREL/ALLIANCE in any publication that results from the use of\n" \
+    #        " this Software.  The names DOE/NREL/ALLIANCE, however, may\n" \
+    #        "not be used in any advertising or publicity to endorse or promote\n" \
+    #        " anyproducts  or  commercial  entities  unless  specific  written \n" \
+    #        "permission  is  obtained  from  DOE/NREL/ALLIANCE.  The user\n" \
+    #        " also  understands  that  DOE/NREL/Alliance  is not obligated  to \n" \
+    #        "provide   the  user  with  any   support, consulting,  training  or \n" \
+    #        "assistance of any kind  with regard  to the  use  of this Software\n" \
+    #        "or  to  provide  the  user with  any  updates,  revisions  or  new \n" \
+    #        "versions of this Software.\n\n" \
+    #        "YOU  AGREE  TO  INDEMNIFY  DOE/NREL/ALLIANCE,  AND  ITS\n" \
+    #        "SUBSIDIARIES,   AFFILIATES,   OFFICERS,   AGENTS,   AND\n" \
+    #        "EMPLOYEES  AGAINST  ANY   CLAIM  OR  DEMAND,  INCLUDING\n" \
+    #        "REASONABLE  ATTORNEYS' FEES,  RELATED  TO  YOUR  USE OF\n" \
+    #        "THIS  SOFTWARE.  THIS  SOFTWARE  IS  PROVIDED  BY  DOE/\n" \
+    #        "NREL/ALLIANCE\"AS  IS\"  AND  ANY  EXPRESS  OR  IMPLIED\n" \
+    #        "WARRANTIES, INCLUDING  BUT NOT LIMITED TO, THE IMPLIED\n" \
+    #        "WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A \n" \
+    #        "PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL\n" \
+    #        "DOE/NREL/ALLIANCE BE LIABLE FOR ANY SPECIAL, INDIRECT\n" \
+    #        "OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES \n" \
+    #        "WHATSOEVER, INCLUDING BUT NOT LIMITED TO CLAIMS \n" \
+    #        "ASSOCIATED WITH THE LOSS OF DATA OR PROFITS, WHICH\n" \
+    #        "MAY RESULT FROM AN ACTION IN CONTRACT, NEGLIGENCE On\n" \
+    #        "OTHER TORTIOUS CLAIM THAT ARISES OUT OF OR IN \n" \
+    #        "CONNECTION WITH THE ACCESS, USE OR PERFORMANCE OF\n" \
+    #        "THIS SOFTWARE. "
 
-    textLabel = tk.Label(helpRoot, text=text)
-    textLabel.place(relx=0.5, rely=0.0, relwidth=0.50, relheight=1)
+    # textLabel = tk.Label(helpRoot, text=text)
+    # textLabel.place(relx=0.5, rely=0.0, relwidth=0.50, relheight=1)
 
     setWindowIcon(helpRoot)
     helpRoot.mainloop()
