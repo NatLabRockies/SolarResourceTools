@@ -1809,15 +1809,15 @@ def graphConfig(amass, dframe):
             df.loc[(df["toList"] == 1) & (df[y] > data["y2"]), "toList"] = 0  # top max bound
             df.loc[(df["toList"] == 1) & (df[y] < data["y1"]), "toList"] = 0  # lower min bound
             df = df[df["toList"] == 1]
-            
+
             # Cols should be [SZA, KT, KN, KD, Date, Time, ghi, dni, dhi, ... ] where Date and Time column is extracted from 'date' column.
             points = pd.DataFrame()
             # start with SZA column -- TODO: Make sure SZA column is from qafit dataframe, not original one
             points['SZA'] = df['SZA'].astype('float').round(3)
             # now add KT KN and KD with three decimal places
-            points["KT"] = df[x].astype('float').round(3)
-            points["KN"] = df[y].astype('float').round(3)
-            points["KD"] = df["KD"].astype('float').round(3)
+            points["KT"] = (df[x]/100).astype('float').round(3)
+            points["KN"] = (df[y]/100).astype('float').round(3)
+            points["KD"] = (df["KD"]/100).astype('float').round(3)
             # 'date' column is the one with local timezone.
             points['Date'] = df['date'].dt.date
             points['Time'] = df['date'].dt.time
@@ -1825,9 +1825,21 @@ def graphConfig(amass, dframe):
             points["ghi"] = df["ghi"].astype('float').round(3)
             points["dni"] = df["dni"].astype('float').round(3)
             points["dhi"] = df["dhi"].astype('float').round(3)
-            # save as both csv and txt
+            # save as csv
             points.to_csv("Data_Points.csv", index=False)
-            points.to_csv("Data_Points.txt", sep='\t', index=False)
+            
+            # save as txt with aligned columns for better visualization
+            with open("Data_Points.txt", 'w') as f:
+                # Format with aligned columns
+                f.write(points.to_string(index=False))
+                f.write('\n')
+
+            if platform.system() == "Windows":
+                os.system("Data_Points.txt")
+                os.system("Data_Points.csv")
+            else:
+                subprocess.run(['open', "Data_Points.txt"], check=True)
+                subprocess.run(['open', "Data_Points.csv"], check=True)
 
         def exclude(amass, dframe, x, y):
             plt.close('all')
