@@ -1809,15 +1809,15 @@ def graphConfig(amass, dframe):
             df.loc[(df["toList"] == 1) & (df[y] > data["y2"]), "toList"] = 0  # top max bound
             df.loc[(df["toList"] == 1) & (df[y] < data["y1"]), "toList"] = 0  # lower min bound
             df = df[df["toList"] == 1]
-
+            
             # Cols should be [SZA, KT, KN, KD, Date, Time, ghi, dni, dhi, ... ] where Date and Time column is extracted from 'date' column.
             points = pd.DataFrame()
             # start with SZA column -- TODO: Make sure SZA column is from qafit dataframe, not original one
             points['SZA'] = df['SZA'].astype('float').round(3)
-            # now add KT KN and KD with three decimal places
-            points["KT"] = (df[x]/100).astype('float').round(3)
-            points["KN"] = (df[y]/100).astype('float').round(3)
-            points["KD"] = (df["KD"]/100).astype('float').round(3)
+            # Use naive values directly (no multiplication needed)
+            points["KT"] = df['XT'].astype('float').round(3)
+            points["KN"] = df['XN'].astype('float').round(3)
+            points["KD"] = df['XD'].astype('float').round(3)
             # 'date' column is the one with local timezone.
             points['Date'] = df['date'].dt.date
             points['Time'] = df['date'].dt.time
