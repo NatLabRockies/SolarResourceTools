@@ -1276,3 +1276,26 @@ class SPA:
                                                atmospheric_refraction=a,
                                                delta_t=delta_t)
         return theta
+
+    @classmethod
+    def sun_earth_distance(cls, time_index, delta_t=67):
+        """
+        Compute the sun-earth distance (AU) using exact astronomical calculation.
+        This is used to calculate ETRN = SOLCON / (r^2).
+
+        Parameters
+        ----------
+        time_index : ndarray | pandas.DatetimeIndex | str
+            Datetime stamps of interest
+        delta_t : float
+            Difference between terrestrial time and UT1
+
+        Returns
+        -------
+        r : ndarray
+            Sun-earth distance in AU
+        """
+        spa = cls(time_index, lat_lon=np.array([0, 0]))
+        jd, jde, jc, jce, jme = spa._parse_time(spa.time_index, delta_t=delta_t)
+        r = spa.heliocentric_radius_vector(jme)
+        return r

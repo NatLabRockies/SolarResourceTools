@@ -54,14 +54,20 @@ jobs:
         if: runner.os == 'Windows'
         run: >-
           python -m PyInstaller --noconfirm --clean --windowed --onefile
-          --name QAFIT-windows --icon dataFiles/qcfit-icon.ico
+          --name QAFIT-windows --icon dataFiles/qafit-icon.ico
           --add-data "dataFiles;dataFiles" qafit_script.py
+
+      - name: Generate macOS application icon
+        if: runner.os == 'macOS'
+        run: >-
+          python -c "from PIL import Image; image = Image.open('dataFiles/qafit-icon.ico'); image.save('qafit.icns', format='ICNS')"
 
       - name: Build macOS application
         if: runner.os == 'macOS'
         run: >-
           python -m PyInstaller --noconfirm --clean --windowed --onedir
-          --name QAFIT-macos --add-data "dataFiles:dataFiles" qafit_script.py
+          --name QAFIT-macos --icon qafit.icns
+          --add-data "dataFiles:dataFiles" qafit_script.py
 
       - name: Package macOS application
         if: runner.os == 'macOS'

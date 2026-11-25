@@ -18,17 +18,15 @@ def getArea(shape):
     y = [int(i) for i in y]
     if shape == "left":
         curve = ut.curveLeft
-        end = 7
     elif shape == "right":
         curve = ut.curveRight
-        end = 6
     else:
         print("Shape should be <left> or <right>")
         return
 
     cols = {"y": y}
-    for i in range(1, end):
-        for j in range(1, 21):
+    for i in range(1, len(curve) + 1):
+        for j in range(1, 31):
             val = []
             toAdd = 0
             shift = (j - 1) * 2.5
@@ -65,7 +63,6 @@ plt.plot(ut.curveRight[0], y )
 
 
 """
-
 
 
 
